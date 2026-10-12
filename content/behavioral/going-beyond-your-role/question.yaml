@@ -1,0 +1,22 @@
+title: Taking ownership beyond your role
+competencies: [ownership]
+lenses: [amazon:ownership, meta:focus-on-impact]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Tell me about a time you took on something that was not part of your job because it needed to be done.
+follow_ups:
+  - How did you notice the problem?
+  - Why did you decide to act rather than hand it to someone else?
+  - How did you balance it with your own responsibilities?
+  - What was the result, and what changed afterwards?
+strong_signals:
+  - Spotted the problem on their own
+  - Took action without being asked while keeping core work on track
+  - Delivered a measurable improvement
+red_flags:
+  - Overstepped others' ownership without talking to them
+  - Cannot say what the benefit was
+tips: |
+  Good answers show initiative plus judgment: you acted, kept your main work safe, and brought the right people along.

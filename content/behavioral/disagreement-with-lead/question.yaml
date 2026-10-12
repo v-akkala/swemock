@@ -1,0 +1,23 @@
+title: Disagreeing with a manager or tech lead
+competencies: [conflict, leadership]
+lenses: [amazon:have-backbone, google:doing-the-right-thing]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Describe a time you disagreed with your manager or a tech lead about how to do something.
+follow_ups:
+  - How did you raise your concern, and when?
+  - What evidence or reasoning did you bring?
+  - What did they decide, and did you commit to it?
+  - How did it turn out? Were you right?
+strong_signals:
+  - Raised the concern directly and respectfully with reasons
+  - Backed the view with data or a clear argument
+  - Committed to the decision once it was made
+  - Reflects honestly on whether the call was right
+red_flags:
+  - Went around the manager or complained behind their back
+  - Gives in with no attempt to voice a view, or refuses to commit afterwards
+tips: |
+  The pattern interviewers look for is "disagree, then commit": make your case once, clearly, then support the decision.

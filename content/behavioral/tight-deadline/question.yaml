@@ -1,0 +1,23 @@
+title: Delivering under a tight deadline
+competencies: [pressure, prioritization]
+lenses: [amazon:deliver-results, amazon:bias-for-action]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Tell me about a time you had to deliver something important with very little time.
+follow_ups:
+  - What did you cut or defer, and how did you decide?
+  - How did you keep quality acceptable?
+  - Who did you keep informed, and how?
+  - What was the outcome against the deadline?
+  - What did you learn that you use on deadlines now?
+strong_signals:
+  - Explicit prioritization with reasons for what was cut
+  - Communicates risks early to stakeholders
+  - A concrete result relative to the deadline
+red_flags:
+  - Heroics with no planning ("I just worked all weekend")
+  - Quality or safety quietly sacrificed
+tips: |
+  Show judgment under pressure: what you scoped down, what you protected, and how you kept people informed.

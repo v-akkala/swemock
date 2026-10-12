@@ -1,0 +1,23 @@
+title: Tell me about yourself
+competencies: [motivation, communication]
+lenses: [google:collaboration]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Tell me a bit about yourself and what brings you to this role.
+follow_ups:
+  - What part of that background do you think is most relevant to this job?
+  - What was the most interesting thing you worked on recently, and what was your part in it?
+  - What are you hoping to learn or do next that you can't today?
+  - What would a former teammate say is your strongest quality?
+strong_signals:
+  - A structured arc of past, present, and future in about two minutes
+  - Highlights two or three experiences that connect to the role
+  - Ends by linking their goals to this opportunity
+red_flags:
+  - Recites the resume line by line
+  - Covers personal history with no link to the role
+tips: |
+  Aim for 90 seconds: where you are now, two highlights that fit this role, and why you want it. Leave room for the
+  interviewer to pick a thread.

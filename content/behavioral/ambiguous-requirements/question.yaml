@@ -1,0 +1,21 @@
+title: Working with ambiguous requirements
+competencies: [ambiguity, ownership]
+lenses: [google:comfort-with-ambiguity, amazon:bias-for-action]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Describe a time you were given a task or project where the goal was unclear.
+follow_ups:
+  - How did you figure out what was really needed?
+  - Who did you talk to, and what questions did you ask?
+  - What assumptions did you make, and how did you check them?
+  - What was delivered, and did it match what people wanted?
+strong_signals:
+  - Takes initiative to clarify rather than waiting
+  - Asks targeted questions and writes down assumptions
+  - Delivers something incrementally and checks it with stakeholders
+red_flags:
+  - Waited for direction, or guessed and built the whole thing unchecked
+tips: |
+  Show a method for creating clarity: questions, a small first version, and a check-in before going deep.

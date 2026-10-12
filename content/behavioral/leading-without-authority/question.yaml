@@ -1,0 +1,23 @@
+title: Leading without authority
+competencies: [leadership, communication]
+lenses: [amazon:earn-trust, google:collaboration]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Tell me about a time you led or influenced a group without being their manager.
+follow_ups:
+  - Why did people follow your lead?
+  - How did you handle someone who didn't want to go along?
+  - How did you keep everyone aligned and informed?
+  - What was the outcome?
+  - What would you do differently when leading peers next time?
+strong_signals:
+  - Persuaded through clarity, data, and listening rather than position
+  - Handled resistance by understanding it
+  - Gave credit to others and kept the group moving to a result
+red_flags:
+  - Describes giving orders or taking over
+  - No evidence others actually changed what they did
+tips: |
+  Influence stories land when you show how you earned buy-in: what you listened for, what you offered, and how you followed through.

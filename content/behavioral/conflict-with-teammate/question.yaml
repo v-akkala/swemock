@@ -1,0 +1,24 @@
+title: A conflict with a teammate
+competencies: [conflict, teamwork]
+lenses: [amazon:earn-trust, google:collaboration]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Tell me about a time you had a real disagreement with a teammate. How did it play out?
+follow_ups:
+  - What was the root of the disagreement, from each side's point of view?
+  - What did you personally do to resolve it?
+  - How did the other person react?
+  - What was the outcome for the project and for your working relationship?
+  - What would you do differently next time?
+strong_signals:
+  - A specific, non-trivial disagreement rather than a petty one
+  - Represents the other person's view fairly
+  - Takes concrete steps to understand and resolve it directly
+  - Ends with a result for both the work and the relationship
+red_flags:
+  - Casts the teammate as the villain
+  - Says they never have conflicts
+tips: |
+  Show that you can disagree and still collaborate. Spend more time on what you did to resolve it than on who was right.

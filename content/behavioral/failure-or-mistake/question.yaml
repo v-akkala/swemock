@@ -1,0 +1,23 @@
+title: A mistake you made
+competencies: [failure, ownership]
+lenses: [amazon:ownership, google:humility]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Tell me about a significant mistake you made at work or on a project. What happened?
+follow_ups:
+  - How did you find out about it?
+  - What was the impact, and on whom?
+  - What did you do right away to limit the damage?
+  - What did you change afterwards so it couldn't happen again?
+  - Would you handle the first moment differently now?
+strong_signals:
+  - A real mistake with real consequences, owned plainly
+  - Quick, concrete action to contain and fix it
+  - A lasting change in process or habit, not just "I'll be more careful"
+red_flags:
+  - Picks a "weakness in disguise" such as working too hard
+  - Blames circumstances or colleagues
+tips: |
+  Own it in the first sentence. A good answer spends most of its time on the fix and the lasting change.

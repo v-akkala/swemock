@@ -1,0 +1,25 @@
+title: Your most challenging project
+competencies: [technical-depth, ownership]
+lenses: [amazon:dive-deep, amazon:deliver-results]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Tell me about the most technically challenging project you have worked on.
+follow_ups:
+  - What made it hard, specifically?
+  - Which design decisions were yours, and what alternatives did you consider?
+  - What went wrong along the way, and how did you handle it?
+  - How did you know the project worked? What did you measure?
+  - What would you design differently if you started again?
+strong_signals:
+  - Names concrete technical difficulties, not just "it was a lot of work"
+  - Separates their own decisions and code from the team's
+  - Explains tradeoffs between options they considered
+  - States a measurable outcome
+red_flags:
+  - Cannot go one level deeper on technical details
+  - Describes only the team's work
+tips: |
+  Pick a project you can explain two levels deeper than the headline. Interviewers use the follow-ups to check that you
+  really did the work.

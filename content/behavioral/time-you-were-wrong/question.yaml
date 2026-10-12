@@ -1,0 +1,22 @@
+title: A time you were wrong
+competencies: [failure, feedback]
+lenses: [amazon:are-right-a-lot, google:humility]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Tell me about a time you were confident about something technical or about a decision, and turned out to be wrong.
+follow_ups:
+  - What made you so sure at the time?
+  - What was the first sign you might be wrong?
+  - How did you change course, and how did you tell the people affected?
+  - What do you do now to check your own assumptions?
+strong_signals:
+  - Admits being wrong without hedging
+  - Describes the evidence that changed their mind
+  - Shows a habit that came out of it
+red_flags:
+  - The "wrong" turns out to be someone else's fault
+  - Cannot explain why they were overconfident
+tips: |
+  Strong answers show how you update: what evidence changed your mind and how fast you moved once it did.
