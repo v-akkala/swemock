@@ -61,6 +61,7 @@ export const LIMITS = {
   defaultSuiteTimeoutMs: 30_000,
   maxSuiteTimeoutMs: 120_000,
   outputCapBytes: 64 * 1024,
+  maxCollectBytes: 16 * 1024 * 1024,
 } as const;
 
 export const dsaTestSchema = z.object({
@@ -80,6 +81,8 @@ export const dsaRunRequestSchema = z.object({
   timeLimitMs: z.number().int().min(100).max(LIMITS.maxTimeLimitMs).default(LIMITS.defaultTimeLimitMs),
   memoryLimitMb: z.number().int().min(32).max(LIMITS.maxMemoryMb).default(LIMITS.defaultMemoryMb),
   stopOnFirstFailure: z.boolean().default(false),
+  /** Return full outputs instead of 4KB previews (content tooling computing expected outputs). */
+  captureFull: z.boolean().default(false),
 });
 export type DsaRunRequest = z.input<typeof dsaRunRequestSchema>;
 
@@ -138,6 +141,8 @@ export const projectRunRequestSchema = z.object({
   timeoutMs: z.number().int().min(1000).max(LIMITS.maxSuiteTimeoutMs).default(LIMITS.defaultSuiteTimeoutMs),
   memoryLimitMb: z.number().int().min(32).max(LIMITS.maxMemoryMb).default(LIMITS.defaultMemoryMb),
   stdin: z.string().max(LIMITS.outputCapBytes).default(""),
+  /** Files to read back after the command finishes (e.g. generated test data), relative to /work. */
+  collect: z.array(relPath).max(10).default([]),
 });
 export type ProjectRunRequest = z.input<typeof projectRunRequestSchema>;
 
@@ -163,6 +168,8 @@ export const projectRunResultSchema = z.object({
   /** Null when no results file was requested or it wasn't produced. */
   tests: z.array(projectTestResultSchema).nullable(),
   resultsError: z.string().nullable(),
+  /** Contents of requested `collect` files that exist (up to 16MB in total). */
+  files: z.record(z.string(), z.string()).default({}),
 });
 export type ProjectRunResult = z.infer<typeof projectRunResultSchema>;
 

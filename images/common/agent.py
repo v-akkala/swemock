@@ -29,6 +29,8 @@ import xml.etree.ElementTree as ET
 WORK = "/work"
 OUTPUT_CAP = 64 * 1024
 PREVIEW_CAP = 4 * 1024
+FULL_OUTPUT_CAP = 8 * 1024 * 1024
+COLLECT_CAP = 16 * 1024 * 1024
 TOTAL_OUTPUT_CAP = 1024 * 1024  # user stdout+stderr reported across all tests of one run
 COMPILE_OUTPUT_CAP = 16 * 1024
 STACK_BYTES = 256 * 1024 * 1024
@@ -402,9 +404,9 @@ class Driver:
         self.results.close()
 
 
-def preview(value):
+def preview(value, cap=PREVIEW_CAP):
     text = json.dumps(value, separators=(",", ":"))
-    return text if len(text) <= PREVIEW_CAP else text[:PREVIEW_CAP] + "…"
+    return text if len(text) <= cap else text[:cap] + "…"
 
 
 def run_dsa(b):
@@ -484,7 +486,7 @@ def run_dsa(b):
                 r = test_result(test["id"], verdict, stdout=stdout, stderr=stderr, message=message)
             driver = None
         else:
-            r = judge_line(test, json.loads(line), checker, limit_ms)
+            r = judge_line(test, json.loads(line), checker, limit_ms, FULL_OUTPUT_CAP if b.get("captureFull") else PREVIEW_CAP)
             r["stdout"], r["stderr"] = driver.stdout.take(), driver.stderr.take()
             peak = driver.peak_kb()
             r["memoryKb"] = peak
@@ -515,7 +517,7 @@ def run_dsa(b):
     return {**base, "verdict": overall(results), "tests": results}
 
 
-def judge_line(test, msg, checker, limit_ms):
+def judge_line(test, msg, checker, limit_ms, cap):
     time_ms = msg.get("timeMs")
     if not msg.get("ok"):
         etype = msg.get("errorType", "Error")
@@ -523,15 +525,15 @@ def judge_line(test, msg, checker, limit_ms):
         return test_result(test["id"], verdict, time_ms=time_ms, message=f"{etype}: {msg.get('message', '')}"[:PREVIEW_CAP])
     actual = msg.get("output")
     if time_ms is not None and time_ms > limit_ms:
-        return test_result(test["id"], "time_limit_exceeded", time_ms=time_ms, actual=preview(actual),
+        return test_result(test["id"], "time_limit_exceeded", time_ms=time_ms, actual=preview(actual, cap),
                            message=f"Exceeded the {limit_ms} ms time limit.")
     if "expected" not in test:
-        return test_result(test["id"], "ran", time_ms=time_ms, actual=preview(actual))
+        return test_result(test["id"], "ran", time_ms=time_ms, actual=preview(actual, cap))
     try:
         ok, note = checker(test["input"], test["expected"], actual)
     except Exception as e:  # a broken custom checker is a content bug; surface it
         ok, note = False, f"Checker error: {type(e).__name__}: {e}"
-    return test_result(test["id"], "accepted" if ok else "wrong_answer", time_ms=time_ms, actual=preview(actual), message=note)
+    return test_result(test["id"], "accepted" if ok else "wrong_answer", time_ms=time_ms, actual=preview(actual, cap), message=note)
 
 
 def test_result(tid, verdict, time_ms=None, memory_kb=None, actual=None, stdout="", stderr="", message=None):
@@ -561,7 +563,7 @@ def overall(results):
 
 def run_project(b):
     r = run_simple(b["command"], b["timeoutMs"] / 1000, stdin_data=b.get("stdin", "").encode(), shell=True)
-    r["tests"], r["resultsError"] = None, None
+    r["tests"], r["resultsError"], r["files"] = None, None, collect_files(b.get("collect") or [])
     spec = b.get("results")
     if spec:
         try:
@@ -569,6 +571,21 @@ def run_project(b):
         except Exception as e:
             r["resultsError"] = f"{type(e).__name__}: {e}"[:PREVIEW_CAP]
     return r
+
+
+def collect_files(paths):
+    out, total = {}, 0
+    for rel in paths:
+        path = os.path.normpath(os.path.join(WORK, rel))
+        if not path.startswith(WORK + "/") or not os.path.isfile(path):
+            continue
+        with open(path, encoding="utf-8", errors="replace") as f:
+            text = f.read(COLLECT_CAP - total + 1)
+        if total + len(text) > COLLECT_CAP:
+            break
+        out[rel] = text
+        total += len(text)
+    return out
 
 
 def parse_results(spec):

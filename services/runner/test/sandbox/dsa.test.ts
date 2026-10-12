@@ -231,3 +231,16 @@ describe("float checker", () => {
     expect(r.verdict).toBe("accepted");
   });
 });
+
+describe("full output capture", () => {
+  const sig: Signature = { kind: "function", name: "ramp", params: [{ name: "n", type: "int" }], returns: "int[]" };
+  const code = "class Solution:\n    def ramp(self, n: int) -> List[int]:\n        return list(range(n))\n";
+
+  it("truncates previews by default and returns everything with captureFull", async () => {
+    const tests = [{ id: "big", input: { n: 50000 } }];
+    const preview = await dsa({ language: "python", code, signature: sig, tests });
+    expect(preview.tests[0]!.actual!.length).toBeLessThan(5000);
+    const full = await dsa({ language: "python", code, signature: sig, tests, captureFull: true });
+    expect(JSON.parse(full.tests[0]!.actual!)).toHaveLength(50000);
+  });
+});

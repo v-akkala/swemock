@@ -94,4 +94,15 @@ describe("project runs", () => {
     expect(r.tests).toBeNull();
     expect(r.resultsError).toContain("no results");
   });
+
+  it("collects files written by the command, beyond the stdout cap", async () => {
+    const r = await project({
+      language: "python",
+      files: { "gen.py": "import json\nprint(json.dumps(list(range(100000))))\n" },
+      command: { kind: "shell", cmd: "python3 gen.py > out.json" },
+      collect: ["out.json", "missing.json"],
+    });
+    expect(Object.keys(r.files)).toEqual(["out.json"]);
+    expect(JSON.parse(r.files["out.json"]!)).toHaveLength(100000);
+  });
 });

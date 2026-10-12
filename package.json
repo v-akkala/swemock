@@ -14,7 +14,10 @@
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
     "db:generate": "pnpm --filter @swemock/web db:generate",
-    "test:sandbox": "pnpm --filter @swemock/runner test:sandbox"
+    "test:sandbox": "pnpm --filter @swemock/runner test:sandbox",
+    "content:new": "tsx scripts/content.ts new",
+    "content:gen": "tsx scripts/content.ts gen",
+    "content:validate": "tsx scripts/content.ts validate"
   },
   "devDependencies": {
     "tsx": "4.23.15"

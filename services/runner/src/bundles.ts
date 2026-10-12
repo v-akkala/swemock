@@ -41,6 +41,7 @@ export function buildDsaBundle(req: DsaRequest): Bundle {
       memoryLimitMb: req.memoryLimitMb,
       memoryAllowanceKb: profile.memoryAllowanceKb,
       stopOnFirstFailure: req.stopOnFirstFailure,
+      captureFull: req.captureFull,
       budgetMs,
     },
   };
@@ -60,6 +61,7 @@ export function buildProjectBundle(req: ProjectRequest): Bundle {
       timeoutMs: req.timeoutMs,
       stdin: req.stdin,
       results: req.results,
+      collect: req.collect,
     },
   };
 }

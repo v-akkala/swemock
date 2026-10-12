@@ -1,0 +1,42 @@
+# SCAFFOLD: delete this line once the problem is finished (content:validate fails while it is here).
+#
+# This scaffold is a tiny working problem so you can see every file in place. Replace the content,
+# keep the structure. Full guide: prompts/authoring/dsa.md
+title: __TITLE__
+difficulty: __DIFFICULTY__           # easy | medium | hard
+tags: [arrays-hashing]               # see DSA_TAGS in packages/content/src/dsa/manifest.ts
+companies: []
+source: authored
+reviewed: false                      # a maintainer flips this after reading the problem (or approves it in the app)
+version: 1                           # bump when the problem changes in a way that matters to past attempts
+
+# The signature is written once; stubs and drivers for every language are generated from it.
+# Types: int long double bool char string ListNode TreeNode, T[] and list<T>.
+# For a design-class problem use `kind: design` (see content/dsa/lru-cache/problem.yaml).
+signature:
+  kind: function
+  name: sumOfTwoLargest
+  params:
+    - { name: nums, type: "int[]" }
+  returns: long
+
+# exact | { type: unordered, nested: false } | { type: float, tolerance: 1.0e-6 } | { type: custom, file: checker.py }
+checker: { type: exact }
+
+limits: { time_ms: 2000, memory_mb: 256 }
+
+# Set true when a naive solution must be too slow. Then add solutions/brute.py (it must pass the small
+# tests and time out on at least one "stress" test).
+tle_guard: false
+
+# Four hint levels, each revealing a bit more. Level 5 is editorial.md.
+hints:
+  - "A nudging question that points at the right idea without naming it."
+  - "The key observation that makes the problem tractable."
+  - "The approach in plain words, no code."
+  - "Pseudocode for the approach."
+
+# Questions an interviewer asks after you solve it.
+followups:
+  - "What if the numbers arrive as a stream and you can only keep O(1) memory?"
+  - "How would the answer change if you needed the k largest instead of two?"
