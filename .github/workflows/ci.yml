@@ -48,7 +48,7 @@ jobs:
           node-version: 24
       - run: npm install -g pnpm@12.11.2
       - run: pnpm install --frozen-lockfile
-      - name: Build and start (test mode: fake AI provider and data reset for e2e)
+      - name: "Build and start (test mode: fake AI provider and data reset for e2e)"
         run: SWEMOCK_TEST_MODE=1 docker compose up -d --build --wait --wait-timeout 180
       - name: Health
         run: |
