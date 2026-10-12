@@ -23,7 +23,7 @@ add("edge", list(range(1, 11)), 5)
 # Random
 for n, hi, d in ((10, 20, 3), (30, 100, 7), (100, 500, 10), (400, 500, 40), (1000, 30, 100)):
     add("random", [rng.randint(1, hi) for _ in range(n)], d)
-add("random", [rng.randint(1, 500) for _ in range(500)], 1)
+add("random", [rng.randint(1, 500) for _ in range(150)], 1)
 add("random", [rng.randint(1, 500) for _ in range(500)], 499)
 
 # Stress: the linear scan over capacities is far too slow here

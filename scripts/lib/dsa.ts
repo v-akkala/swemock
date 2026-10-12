@@ -235,7 +235,9 @@ export async function validateDsa(judge: Judge, dir: string): Promise<Report> {
   );
   for (const { language, run } of refRuns) {
     if (run.verdict !== "accepted") fail(`${language} reference: ${describeFailure(run, all)}`);
-    else if ((run.maxTimeMs ?? 0) > m.limits.time_ms * 0.5) {
+    else if ((run.maxTimeMs ?? 0) > m.limits.time_ms * 0.6) {
+      fail(`${language} reference's slowest test takes ${run.maxTimeMs} ms of the ${m.limits.time_ms} ms limit; a slower machine would time out`);
+    } else if ((run.maxTimeMs ?? 0) > m.limits.time_ms * 0.35) {
       warn(`${language} reference's slowest test takes ${run.maxTimeMs} ms of the ${m.limits.time_ms} ms limit`);
     }
   }
@@ -249,6 +251,12 @@ export async function validateDsa(judge: Judge, dir: string): Promise<Report> {
       runSolution(judge, item, "python", item.brute, stress),
     ]);
     if (okRun.verdict !== "accepted") fail(`brute.py is wrong on a small test: ${describeFailure(okRun, small)}`);
+    else if ((okRun.maxTimeMs ?? 0) > m.limits.time_ms * 0.5) {
+      // A slower machine (CI, another laptop) would push this over the limit and fail validation at random.
+      fail(`brute.py's slowest small test takes ${okRun.maxTimeMs} ms of the ${m.limits.time_ms} ms limit; shrink that test or mark it "stress"`);
+    } else if ((okRun.maxTimeMs ?? 0) > m.limits.time_ms * 0.3) {
+      warn(`brute.py's slowest small test takes ${okRun.maxTimeMs} ms of the ${m.limits.time_ms} ms limit`);
+    }
     const bad = stressRun.tests.filter((t) => t.verdict !== "accepted" && t.verdict !== "time_limit_exceeded");
     if (bad.length) fail(`brute.py fails a stress test for a reason other than time: ${bad[0]!.id} → ${bad[0]!.verdict}`);
     if (!stressRun.tests.some((t) => t.verdict === "time_limit_exceeded")) {

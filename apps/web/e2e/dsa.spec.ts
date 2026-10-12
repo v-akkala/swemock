@@ -38,8 +38,13 @@ test.describe("problem browser", () => {
 
   test("Ctrl+K opens the command palette", async ({ page }) => {
     await page.goto("/dsa");
-    await page.keyboard.press("Control+k");
-    await page.getByRole("dialog", { name: "Command palette" }).getByRole("textbox").fill("brackets");
+    const dialog = page.getByRole("dialog", { name: "Command palette" });
+    // The key handler exists only after hydration, which can lag on a cold production server: retry.
+    await expect(async () => {
+      if (!(await dialog.isVisible())) await page.keyboard.press("Control+k");
+      await expect(dialog).toBeVisible({ timeout: 1000 });
+    }).toPass({ timeout: 20_000 });
+    await dialog.getByRole("textbox").fill("brackets");
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/dsa\/balanced-brackets$/);
   });
