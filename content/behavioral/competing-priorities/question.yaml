@@ -1,0 +1,22 @@
+title: Competing priorities
+competencies: [prioritization, pressure]
+lenses: [amazon:bias-for-action, meta:focus-on-impact]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Tell me about a time you had more work than you could finish, with several things all claiming to be urgent.
+follow_ups:
+  - How did you decide what to do first?
+  - Who did you talk to, and what did you agree?
+  - What did you drop or delay, and what happened as a result?
+  - Looking back, would you prioritize the same way?
+strong_signals:
+  - Uses a clear criterion such as impact, deadlines, or dependencies
+  - Communicates tradeoffs to stakeholders instead of silently dropping work
+  - States what was cut and the consequence
+red_flags:
+  - Tried to do everything and burned out or missed everything
+  - No explicit criterion for the choice
+tips: |
+  Name your decision rule out loud and show you brought the people affected into the decision.

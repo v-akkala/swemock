@@ -1,0 +1,22 @@
+title: Learning something new quickly
+competencies: [learning, adaptability]
+lenses: [amazon:learn-and-be-curious, google:comfort-with-ambiguity]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Tell me about a time you had to learn a new technology or domain quickly to get something done.
+follow_ups:
+  - Why did you need to learn it so fast?
+  - How did you go about learning it? What did you skip, and what did you focus on?
+  - How did you know you had learned enough to start?
+  - What did you deliver, and what mistakes did you make along the way?
+strong_signals:
+  - A concrete learning plan, not just "I read the docs"
+  - Focused on what the task required and asked for help early
+  - Delivered a working result and reflects on mistakes
+red_flags:
+  - Claims to have mastered a large topic in a few days with no evidence
+  - Cannot describe how they checked their understanding
+tips: |
+  Show a method: timebox, find an expert, build a small version, then iterate.

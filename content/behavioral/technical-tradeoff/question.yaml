@@ -1,0 +1,22 @@
+title: A difficult technical tradeoff
+competencies: [technical-depth, judgment]
+lenses: [amazon:dive-deep, amazon:think-big]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Describe a technical decision where you had to choose between competing options, each with real downsides.
+follow_ups:
+  - What were the options, and what did each cost or risk?
+  - What criteria did you use to decide, and who was involved?
+  - What did you give up by choosing the way you did?
+  - How did it play out, and would you decide the same way today?
+strong_signals:
+  - Presents at least two real options with honest downsides
+  - States the criteria and data behind the choice
+  - Reflects on how the decision aged
+red_flags:
+  - One option was obviously right, so there was no real tradeoff
+  - Cannot explain why the alternative was rejected
+tips: |
+  Pick a decision with measurable stakes, such as latency versus cost or speed versus correctness, and show your reasoning.

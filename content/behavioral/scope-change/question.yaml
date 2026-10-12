@@ -1,0 +1,23 @@
+title: A change in scope or direction
+competencies: [adaptability, communication]
+lenses: [meta:move-fast, google:comfort-with-ambiguity]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Tell me about a time the requirements or direction of a project changed significantly while you were working on it.
+follow_ups:
+  - What changed, and how did you find out?
+  - How did you react at first, and what did you do about it?
+  - What did you do with the work already finished?
+  - How did you keep the team and stakeholders aligned?
+  - How did it turn out?
+strong_signals:
+  - Stayed constructive and clarified the new goal
+  - Re-planned explicitly, deciding what to keep, change, or drop
+  - Communicated the impact on timeline and risk
+red_flags:
+  - Complains about the change without showing a response
+  - Ignored the change and kept going on the old plan
+tips: |
+  Emphasize how you re-planned and what you told stakeholders, not how annoying the change was.

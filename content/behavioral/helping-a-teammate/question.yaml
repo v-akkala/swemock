@@ -1,0 +1,21 @@
+title: Helping a struggling teammate
+competencies: [teamwork, leadership]
+lenses: [amazon:hire-and-develop-the-best, google:collaboration]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Tell me about a time you helped a teammate who was struggling.
+follow_ups:
+  - How did you notice, and what was going on for them?
+  - What did you do, and what did you leave to them?
+  - What did it cost you in time or in your own work?
+  - What changed for them or for the team?
+strong_signals:
+  - Noticed proactively and offered help in a way the person could accept
+  - Taught or unblocked rather than doing the work for them
+  - Balanced it with their own commitments
+red_flags:
+  - Took over the work, or talked about the teammate in a condescending way
+tips: |
+  Show that you grew the other person's ability, not just that you rescued the project.

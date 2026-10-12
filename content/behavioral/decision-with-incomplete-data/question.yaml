@@ -1,0 +1,21 @@
+title: Deciding with incomplete information
+competencies: [judgment, ambiguity]
+lenses: [amazon:are-right-a-lot, amazon:bias-for-action]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Describe a time you had to make an important decision without all the information you wanted.
+follow_ups:
+  - What information was missing, and why couldn't you get it?
+  - How did you decide how much risk was acceptable?
+  - What did you do to limit the downside or to find out quickly if you were wrong?
+  - How did it turn out, and what would you do differently?
+strong_signals:
+  - Names what was unknown and what was assumed
+  - Chose a reversible path or built in a checkpoint
+  - Reflects honestly on the outcome, whether good or bad
+red_flags:
+  - Waited indefinitely for certainty, or acted on a hunch with no reasoning
+tips: |
+  Interviewers look for structured judgment: assumptions stated, risks bounded, a plan to learn and adjust.

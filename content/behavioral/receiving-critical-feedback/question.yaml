@@ -1,0 +1,22 @@
+title: Receiving critical feedback
+competencies: [feedback, learning]
+lenses: [google:valuing-feedback, amazon:learn-and-be-curious]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Tell me about a time you received critical feedback that was hard to hear. What did you do with it?
+follow_ups:
+  - What exactly was the feedback, and who gave it?
+  - What was your first reaction, and what did you do next?
+  - What did you change, and how did you check that the change worked?
+  - Did you ever disagree with the feedback? How did you handle that?
+strong_signals:
+  - Names real, specific feedback rather than a disguised compliment
+  - Shows openness: asked questions rather than defending
+  - Describes a concrete change and evidence that it helped
+red_flags:
+  - Dismisses the feedback or blames the giver
+  - Cannot say what changed afterwards
+tips: |
+  Choose feedback that actually stung. Show the arc: you listened, you checked you understood it, you acted, and the result.

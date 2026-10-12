@@ -1,0 +1,23 @@
+title: Giving difficult feedback
+competencies: [feedback, leadership]
+lenses: [amazon:earn-trust, amazon:hire-and-develop-the-best]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Describe a time you had to give a teammate or peer difficult feedback.
+follow_ups:
+  - What was the problem, and why did you decide to say something?
+  - How did you prepare, and how did you deliver it?
+  - How did the person respond?
+  - What changed afterwards, for them and for your working relationship?
+  - What would you do differently next time?
+strong_signals:
+  - Addressed the issue directly and privately, with specifics
+  - Focused on behavior and impact, not personality
+  - Followed up and checked for a lasting change
+red_flags:
+  - Avoided the conversation or vented to others instead
+  - Describes a one-sided lecture with no listening
+tips: |
+  Interviewers want to see candor with care: specific examples of behavior, a clear request, and a follow-up.

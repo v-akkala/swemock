@@ -1,0 +1,22 @@
+title: Impact on a customer or user
+competencies: [customer-focus, ownership]
+lenses: [amazon:customer-obsession, google:user-focus]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Tell me about a time your work made a real difference for a customer or user.
+follow_ups:
+  - Who was the user, and how did you learn what they needed?
+  - What did you change because of what you learned?
+  - How did you measure whether it helped?
+  - Was there a tradeoff between what the user wanted and what was feasible? How did you handle it?
+strong_signals:
+  - Talked to or observed real users instead of assuming
+  - Made a decision driven by user needs, possibly against convenience
+  - Measured the outcome for the user
+red_flags:
+  - Describes internal metrics only, with no user in the story
+  - The "customer" is hypothetical
+tips: |
+  Start with the user's problem, not your solution, and finish with how you knew their problem got better.

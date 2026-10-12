@@ -1,0 +1,22 @@
+title: Explaining something complex simply
+competencies: [communication, technical-depth]
+lenses: [amazon:invent-and-simplify, google:collaboration]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Tell me about a time you had to explain a complicated technical idea to someone without that background.
+follow_ups:
+  - Who was the audience, and what did they need to take away?
+  - How did you adapt your explanation?
+  - How did you check they understood?
+  - What was the result of the conversation?
+strong_signals:
+  - Considers the audience's goals and vocabulary
+  - Uses an analogy, example, or diagram, and checks understanding
+  - A concrete result, such as a decision made or a misunderstanding avoided
+red_flags:
+  - Blames the audience for not understanding
+  - Cannot show how they adapted
+tips: |
+  Pick a moment where clarity changed an outcome, such as a decision a non-engineer could finally make.
