@@ -1,0 +1,5 @@
+[
+  { "input": { "nums": [1, 5, 7, -1, 5], "target": 6 }, "expected": 3 },
+  { "input": { "nums": [2, 2, 2, 2], "target": 4 }, "expected": 6 },
+  { "input": { "nums": [1, 2, 3], "target": 10 }, "expected": 0 }
+]

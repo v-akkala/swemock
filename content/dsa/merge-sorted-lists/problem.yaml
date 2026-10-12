@@ -1,0 +1,26 @@
+title: Merge Sorted Lists
+difficulty: easy
+tags: [linked-list, two-pointers]
+companies: []
+source: authored
+reviewed: false
+version: 1
+signature:
+  kind: function
+  name: mergeTwoSorted
+  params:
+    - { name: a, type: ListNode }
+    - { name: b, type: ListNode }
+  returns: ListNode
+checker: { type: exact }
+limits: { time_ms: 2000, memory_mb: 256 }
+tle_guard: false
+hints:
+  - "Both lists are already sorted. Which node can be the very first node of the merged list?"
+  - "It is the smaller of the two heads. After you take it, the same question applies to what is left of the two lists."
+  - "Keep one pointer into each list and a tail pointer for the output. Repeatedly link the smaller current node to the tail and advance that list. When one list runs out, link the rest of the other."
+  - "dummy = new node; tail = dummy; while a and b: take the smaller of a, b, link it to tail, advance that list and tail; tail.next = a or b; return dummy.next."
+followups:
+  - "Do it recursively. What is the recursion depth, and why might that be a problem for long lists?"
+  - "Now merge k sorted lists. What is the best time complexity, and which data structure gets you there?"
+  - "Is your merge stable? When would the order of equal values from different lists matter?"

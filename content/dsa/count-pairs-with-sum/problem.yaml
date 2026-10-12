@@ -1,0 +1,26 @@
+title: Count Pairs With Sum
+difficulty: easy
+tags: [arrays-hashing]
+companies: []
+source: authored
+reviewed: false
+version: 1
+signature:
+  kind: function
+  name: countPairsWithSum
+  params:
+    - { name: nums, type: "int[]" }
+    - { name: target, type: long }
+  returns: long
+checker: { type: exact }
+limits: { time_ms: 2000, memory_mb: 256 }
+tle_guard: true
+hints:
+  - "For a fixed element x, which other value would complete the pair? Can you find out quickly whether you have already seen it?"
+  - "Walk left to right. When you reach x, every earlier occurrence of target - x forms a valid pair with it, and each pair is counted exactly once this way."
+  - "Keep a hash map from value to how many times it has appeared so far. For each x, add map[target - x] to the answer, then record x in the map."
+  - "total = 0; counts = {}; for x in nums: total += counts[target - x] (0 if absent); counts[x] += 1; return total."
+followups:
+  - "What if the array were already sorted? Could you drop the hash map and keep O(1) extra space?"
+  - "What if you had to return the pairs themselves instead of counting them? How large can the output be?"
+  - "How would you handle the array arriving as a stream, answering the count after every element?"

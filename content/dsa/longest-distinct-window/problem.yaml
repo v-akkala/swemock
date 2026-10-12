@@ -1,0 +1,26 @@
+title: Longest Window With Limited Variety
+difficulty: medium
+tags: [sliding-window, strings]
+companies: []
+source: authored
+reviewed: false
+version: 1
+signature:
+  kind: function
+  name: longestWindow
+  params:
+    - { name: s, type: string }
+    - { name: k, type: int }
+  returns: int
+checker: { type: exact }
+limits: { time_ms: 2000, memory_mb: 256 }
+tle_guard: true
+hints:
+  - "Checking every substring is too slow. If a window already has more than k kinds of characters, what does that tell you about every longer window that starts at the same place?"
+  - "Windows only ever need to grow on the right and shrink on the left: the right end advances for each new character, and the left end advances only when the window becomes invalid. Neither end moves backward."
+  - "Maintain a count per character inside the window and the number of distinct characters. Add s[right]; while distinct > k, remove s[left] and advance left. Record right - left + 1 after each step."
+  - "counts = {}; left = 0; best = 0; for right in range(n): counts[s[right]] += 1; while len(counts) > k: counts[s[left]] -= 1; delete the key at zero; left += 1; best = max(best, right - left + 1)."
+followups:
+  - "Suppose the alphabet is huge (Unicode) and k is small. Which data structure keeps the per-step cost constant?"
+  - "Change the problem to 'exactly k distinct characters'. How can you reuse your solution?"
+  - "The text arrives as a stream and you must report the best length so far at every step. What changes?"

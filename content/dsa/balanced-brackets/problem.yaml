@@ -1,0 +1,25 @@
+title: Balanced Brackets
+difficulty: easy
+tags: [stack, strings]
+companies: []
+source: authored
+reviewed: false
+version: 1
+signature:
+  kind: function
+  name: isBalanced
+  params:
+    - { name: s, type: string }
+  returns: bool
+checker: { type: exact }
+limits: { time_ms: 2000, memory_mb: 256 }
+tle_guard: true
+hints:
+  - "When you meet a closing bracket, which opening bracket must it match? Is it the first one you saw, or the most recent unmatched one?"
+  - "The most recent unmatched opener is the only candidate, and openers are removed in the reverse of the order they appeared. That is last-in, first-out."
+  - "Use a stack. Push every opener. On a closer, the stack must be non-empty and its top must be the matching opener, otherwise the string is unbalanced. At the end the stack must be empty."
+  - "for ch in s: if ch is an opener: push(ch); elif ch is a closer: if stack empty or pop() != partner(ch): return false; (ignore other characters). return stack is empty."
+followups:
+  - "What if the string also had to be checked as it is typed, one character at a time? What state do you keep?"
+  - "Can you do it with O(1) extra space if there is only one kind of bracket? Why does that stop working with three kinds?"
+  - "Return the index of the first character that makes the string invalid, or -1. What changes?"

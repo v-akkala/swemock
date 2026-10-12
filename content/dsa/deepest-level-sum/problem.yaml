@@ -1,0 +1,25 @@
+title: Deepest Level Sum
+difficulty: easy
+tags: [trees]
+companies: []
+source: authored
+reviewed: false
+version: 1
+signature:
+  kind: function
+  name: deepestLevelSum
+  params:
+    - { name: root, type: TreeNode }
+  returns: long
+checker: { type: exact }
+limits: { time_ms: 2000, memory_mb: 256 }
+tle_guard: false
+hints:
+  - "Which traversal order visits all nodes of one depth before any node of the next depth?"
+  - "Breadth-first search processes the tree level by level. The last level you process is the deepest one."
+  - "Run BFS with a queue, handling one whole level per iteration. Compute that level's sum as you go, and keep only the sum of the most recent level."
+  - "level = [root]; while level: total = sum of values in level; level = children of all nodes in level; return total from the last non-empty level (0 for an empty tree)."
+followups:
+  - "Can you solve it with a depth-first search instead? What do you track, and what is the stack depth for a very skewed tree?"
+  - "How would you return the sum of every level, as an array?"
+  - "What is the maximum queue size for BFS, and for which tree shapes is it reached?"

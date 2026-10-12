@@ -1,0 +1,6 @@
+[
+  { "input": { "s": "{[a]b}(c)" }, "expected": true },
+  { "input": { "s": "([)]" }, "expected": false },
+  { "input": { "s": "((x)" }, "expected": false },
+  { "input": { "s": "" }, "expected": true }
+]

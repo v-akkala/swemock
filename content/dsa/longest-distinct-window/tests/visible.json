@@ -1,0 +1,6 @@
+[
+  { "input": { "s": "eceba", "k": 2 }, "expected": 3 },
+  { "input": { "s": "aaaa", "k": 1 }, "expected": 4 },
+  { "input": { "s": "abcabc", "k": 1 }, "expected": 1 },
+  { "input": { "s": "abaccc", "k": 2 }, "expected": 4 }
+]
