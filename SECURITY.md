@@ -113,3 +113,20 @@ the editorial and reference code. The same private/public split is what the spec
   JSON request (blocks CSRF from other sites). Extra hostnames can be allowed with
   `SWEMOCK_ALLOWED_HOSTS`.
 - No telemetry and no outbound calls except to an AI provider you configure (from M3).
+
+## Resumes, stories, and voice
+
+- **Resumes and story-bank entries** are personal data. They are stored only in the local database
+  (`/data`), included in no log, and leave the machine only when you copy a packet or use a connected
+  provider you configured.
+- **PDF upload** goes to the local server, never to a third party: the file must start with `%PDF`, be at
+  most 5 MB and 8 pages, and its text is extracted in-process (`unpdf`, pure JavaScript, no external
+  binary). Nothing is stored except the text you review and save. Uploads are multipart POSTs and pass the
+  same same-origin guard as every other write.
+- **Voice input** is off by default (Settings). It uses the browser's Web Speech API; in Chrome and Edge
+  the browser sends the audio to its vendor (Google or Microsoft) to transcribe it. swemock itself never
+  receives audio, only the transcribed text and how many milliseconds of speech there were.
+- **Question key points and strong-answer signals** follow the hidden-content rules above: a live packet
+  never contains them, the AI interviewer sees them but its replies pass the leak filter (which also catches
+  a short secret quoted whole), and the browser receives them only after the candidate answers in the
+  recruiter screen (by design) or in the debrief.

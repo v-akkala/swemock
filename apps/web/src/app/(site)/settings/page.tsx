@@ -6,6 +6,7 @@ import { readSettings } from "@/server/settings";
 import { ContentSection } from "./content-section";
 import { JudgeSection } from "./judge-section";
 import { SettingsForm } from "./settings-form";
+import { VoiceSection } from "./voice-section";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export default function SettingsPage() {
     <div className="max-w-2xl space-y-8">
       <h1 className="text-2xl font-semibold">Settings</h1>
       <SettingsForm initial={settings} />
+      <VoiceSection initial={settings} />
       <JudgeSection />
       <ContentSection />
       <section aria-labelledby="data-heading" className="space-y-2">

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { aiGradeSchema, checkGradeAgainstRubric, exampleGrade } from "./ai-grade";
-import { autoDsaScores, finalScores, recommend, selfScores, type DsaMetrics, type SourcedScore } from "./formulas";
+import { autoBehavioralScores, autoDsaScores, autoRecruiterScores, finalScores, recommend, selfScores, type DsaMetrics, type SourcedScore } from "./formulas";
 import { extractJsonBlock } from "./json-block";
-import { DSA_INTERVIEW_RUBRIC as R } from "./rubrics";
+import { BEHAVIORAL_RUBRIC, DSA_INTERVIEW_RUBRIC as R, RECRUITER_RUBRIC, RUBRICS, rubricForRound } from "./rubrics";
 
 const allItems = (kind?: string) =>
   new Set(R.dimensions.flatMap((d) => d.items.filter((i) => !kind || i.kind === kind).map((i) => i.id)));
@@ -102,5 +102,57 @@ describe("extractJsonBlock", () => {
     expect(extractJsonBlock("no json here")).toMatchObject({ ok: false, raw: null });
     const bad = extractJsonBlock('```json\n{"a": 1,}\n```');
     expect(bad).toMatchObject({ ok: false, raw: '{"a": 1,}' });
+  });
+});
+
+describe("round rubrics", () => {
+  it("are registered, with unique item ids and every dimension scoreable by the checklist", () => {
+    expect(rubricForRound("recruiter")).toBe(RECRUITER_RUBRIC);
+    expect(rubricForRound("behavioral")).toBe(BEHAVIORAL_RUBRIC);
+    expect(rubricForRound("dsa")).toBe(R);
+    for (const rubric of Object.values(RUBRICS)) {
+      const ids = rubric.dimensions.flatMap((d) => d.items.map((i) => i.id));
+      expect(new Set(ids).size).toBe(ids.length);
+      for (const d of rubric.dimensions) expect(d.items.some((i) => i.kind === "must")).toBe(true);
+      const all = new Set(rubric.dimensions.flatMap((d) => d.items.filter((i) => i.kind !== "red").map((i) => i.id)));
+      expect(selfScores(rubric, all).every((s) => s.score === 4)).toBe(true);
+    }
+  });
+});
+
+describe("autoRecruiterScores", () => {
+  it("weights self-grades by difficulty", () => {
+    expect(autoRecruiterScores({ fundamentals: [], probesAsked: 0 })).toEqual([]);
+    const strong = autoRecruiterScores({
+      fundamentals: [
+        { difficulty: "easy", grade: 2 },
+        { difficulty: "medium", grade: 2 },
+        { difficulty: "hard", grade: 1 },
+      ],
+      probesAsked: 2,
+    })[0]!;
+    // got = 1×2 + 2×2 + 3×1 = 9 of 12 → 75% → 4
+    expect(strong).toMatchObject({ dimension: "fundamentals", source: "auto", score: 4 });
+    const weak = autoRecruiterScores({
+      fundamentals: [
+        { difficulty: "easy", grade: 2 },
+        { difficulty: "hard", grade: 0 },
+        { difficulty: "hard", grade: 0 },
+      ],
+      probesAsked: 0,
+    })[0]!;
+    // got = 2 of 14 → 14% → 1
+    expect(weak.score).toBe(1);
+  });
+});
+
+describe("autoBehavioralScores", () => {
+  const m = { answers: 4, avgWords: 160, iShare: 0.8, numberShare: 0.5, avgDurationSec: 150, voiceAnswers: 0, fillers: null, avgWpm: null };
+  it("scores ownership, impact, and concision from the signals", () => {
+    const scores = Object.fromEntries(autoBehavioralScores(m).map((s) => [s.dimension, s.score]));
+    expect(scores).toEqual({ ownership: 4, impact: 3, concision: 4 });
+    expect(autoBehavioralScores({ ...m, iShare: 0.2, numberShare: 0, avgWords: 700 }).map((s) => s.score)).toEqual([1, 1, 1]);
+    expect(autoBehavioralScores({ ...m, iShare: null }).map((s) => s.dimension)).toEqual(["impact", "concision"]);
+    expect(autoBehavioralScores({ ...m, answers: 0 })).toEqual([]);
   });
 });

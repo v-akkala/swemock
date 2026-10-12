@@ -1,7 +1,7 @@
 import type { Settings, SettingsPatch } from "@swemock/shared";
 
 /** Calls a JSON API; throws an Error carrying the server's message on failure. */
-export async function api<T>(url: string, method: "GET" | "POST" | "PUT" | "PATCH", body?: unknown): Promise<T> {
+export async function api<T>(url: string, method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE", body?: unknown): Promise<T> {
   let res: Response;
   try {
     res = await fetch(url, {

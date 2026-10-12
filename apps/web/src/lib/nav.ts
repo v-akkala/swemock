@@ -8,8 +8,8 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { href: "/dsa", label: "DSA", description: "LeetCode-style problems with a real judge." },
-  { href: "/recruiter", label: "Recruiter Screen", description: "Resume walkthrough and CS fundamentals.", milestone: "M4" },
-  { href: "/behavioral", label: "Behavioral", description: "STAR answers, follow-ups, and a story bank.", milestone: "M4" },
+  { href: "/recruiter", label: "Recruiter Screen", description: "Resume walkthrough and CS fundamentals." },
+  { href: "/behavioral", label: "Behavioral", description: "STAR answers, follow-ups, and a story bank." },
   { href: "/lld", label: "Low-Level Design", description: "Complete the system, or implement the class.", milestone: "M5" },
   { href: "/ai-fluency", label: "AI Fluency", description: "Comprehension, AI code review, feature extension.", milestone: "M6" },
   { href: "/ml", label: "ML", description: "System design, serving, training, fundamentals, applied.", milestone: "M7" },

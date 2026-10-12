@@ -3,7 +3,8 @@
  * forbids revealing hidden content; this catches it when the model does anyway.
  *
  * - Code: 8-token shingles of the reference solutions. Two or more shared shingles = leak.
- * - Prose: 10-word shingles of the editorial and the later hints. Any shared shingle = leak.
+ * - Prose: 10-word shingles of the editorial and the later hints. Any shared shingle = leak. A secret
+ *   too short to have a shingle (6–9 words, such as a one-line key point) leaks if it appears whole.
  * - In interview mode a fenced code block longer than three lines is blocked outright: interviewers
  *   don't write the candidate's code.
  */
@@ -19,6 +20,7 @@ export interface LeakCheck {
 
 const CODE_N = 8;
 const PROSE_N = 10;
+const SHORT_MIN = 6;
 
 function codeTokens(text: string): string[] {
   return text.match(/[A-Za-z_][A-Za-z0-9_]*|\d+|[^\sA-Za-z0-9_]/g) ?? [];
@@ -42,7 +44,12 @@ export function buildLeakFilter(secrets: Secrets, opts: { blockCodeBlocks: boole
   const code = new Set<string>();
   for (const src of secrets.code) for (const s of shingles(codeTokens(src), CODE_N)) code.add(s);
   const prose = new Set<string>();
-  for (const p of secrets.prose) for (const s of shingles(words(p), PROSE_N)) prose.add(s);
+  const short: string[] = [];
+  for (const p of secrets.prose) {
+    const w = words(p);
+    if (w.length >= SHORT_MIN && w.length < PROSE_N) short.push(` ${w.join(" ")} `);
+    for (const s of shingles(w, PROSE_N)) prose.add(s);
+  }
 
   return {
     check(text: string): LeakCheck {
@@ -53,7 +60,12 @@ export function buildLeakFilter(secrets: Secrets, opts: { blockCodeBlocks: boole
       }
       let codeHits = 0;
       for (const s of shingles(codeTokens(text), CODE_N)) if (code.has(s) && ++codeHits >= 2) return { leaked: true, reason: "reference solution" };
-      for (const s of shingles(words(text), PROSE_N)) if (prose.has(s)) return { leaked: true, reason: "editorial" };
+      const w = words(text);
+      for (const s of shingles(w, PROSE_N)) if (prose.has(s)) return { leaked: true, reason: "editorial" };
+      if (short.length) {
+        const joined = ` ${w.join(" ")} `;
+        if (short.some((phrase) => joined.includes(phrase))) return { leaked: true, reason: "editorial" };
+      }
       return { leaked: false, reason: null };
     },
   };

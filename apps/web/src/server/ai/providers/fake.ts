@@ -16,6 +16,11 @@ function reply(req: ChatRequest): string {
   const said = lastUser(req);
   switch (req.purpose) {
     case "interviewer": {
+      if (said.includes("LEAK_TEST") && !/<reference_solution/.test(req.system)) {
+        // Conversation rounds: quote the hidden key points / strong-answer signals.
+        const hidden = req.system.split("\n").find((l) => /Key points: |Strong answer signals: /.test(l)) ?? "";
+        return `Sure, here is exactly what a strong answer covers: ${hidden.replace(/^.*?(Key points|Strong answer signals): /, "")}`;
+      }
       if (said.includes("LEAK_TEST")) {
         const ref = /<reference_solution[^>]*>([\s\S]*?)<\/reference_solution>/.exec(req.system)?.[1]?.trim() ?? "";
         return `Sure, here is the full solution:\n\n\`\`\`python\n${ref}\n\`\`\``;
@@ -41,6 +46,33 @@ function reply(req: ChatRequest): string {
         strong_candidate: "[fake] A strong candidate would clarify constraints first and state complexity before coding.",
       };
       return `Here is my assessment.\n\n\`\`\`json\n${JSON.stringify(grade, null, 2)}\n\`\`\`\n`;
+    }
+    case "feedback": {
+      const text = lastUser(req);
+      // Candidate lines from the transcript: the fake only ever rewords what was actually said.
+      const said = [...text.matchAll(/\] Candidate: (.+)/g)].map((m) => m[1]!);
+      const longest = [...said].sort((a, b) => b.length - a.length)[0] ?? "I worked on it.";
+      if (text.includes("Resume feedback after a mock recruiter screen")) {
+        const bullet = /## Bullets the recruiter probed\n\n- ([^\n(]+)/.exec(text)?.[1]?.trim() ?? "A resume bullet";
+        const feedback = {
+          bullets: [
+            {
+              original: bullet,
+              drew_followup: true,
+              could_back_up: "partly",
+              problem: "[fake] The claim was general and the recruiter pressed on how it was measured.",
+              rewrite: bullet.replace(/^(\w)/, (c) => c.toUpperCase()),
+              needs_from_candidate: ["[fake] How the result was measured"],
+            },
+          ],
+          summary: "[fake] Lead with your own contribution and the measured result.",
+        };
+        return `Here is my feedback.\n\n\`\`\`json\n${JSON.stringify(feedback, null, 2)}\n\`\`\`\n`;
+      }
+      const rewrite = {
+        answers: [{ question: "[fake] The first question", stronger_version: `[fake] ${longest}`, missing_facts: ["[fake] The measurable result"] }],
+      };
+      return `Here are the stronger versions.\n\n\`\`\`json\n${JSON.stringify(rewrite, null, 2)}\n\`\`\`\n`;
     }
     default:
       return "OK";

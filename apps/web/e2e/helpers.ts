@@ -86,12 +86,15 @@ export async function verdict(page: Page): Promise<string> {
 }
 
 /** Collects the text of every HTTP response the page receives (to scan for leaked content). */
-export function recordResponses(page: Page): { bodies: string[] } {
-  const rec = { bodies: [] as string[] };
+export function recordResponses(page: Page): { bodies: string[]; urls: string[] } {
+  const rec = { bodies: [] as string[], urls: [] as string[] };
   page.on("response", async (res) => {
     try {
       const type = res.headers()["content-type"] ?? "";
-      if (/json|html|text|javascript/.test(type) && res.status() < 400) rec.bodies.push(await res.text());
+      if (/json|html|text|javascript/.test(type) && res.status() < 400) {
+        rec.bodies.push(await res.text());
+        rec.urls.push(res.url());
+      }
     } catch {
       /* body not available (redirect, aborted) */
     }
@@ -127,3 +130,103 @@ export function gradingReply(score = 3): string {
   };
   return `Overall a solid round.\n\n\`\`\`json\n${JSON.stringify(grade, null, 2)}\n\`\`\`\n`;
 }
+
+// ---- conversation rounds (M4) -----------------------------------------------------------------------
+
+const CONTENT_ROOT = path.resolve(import.meta.dirname, "../../../content");
+
+/** The value of a top-level `key:` in a question.yaml: a block scalar (`|`), a `- item` list, or an inline value. */
+function yamlSection(yaml: string, key: string): string[] {
+  const lines = yaml.split("\n");
+  const at = lines.findIndex((l) => l.startsWith(`${key}:`));
+  if (at < 0) return [];
+  const head = lines[at]!.slice(key.length + 1).trim();
+  const body: string[] = [];
+  for (const l of lines.slice(at + 1)) {
+    if (/^\S/.test(l)) break;
+    body.push(l);
+  }
+  if (head === "|") return [body.map((l) => l.replace(/^ {2}/, "")).join("\n").trim()];
+  if (head === "") {
+    const items: string[] = [];
+    for (const l of body) {
+      if (l.startsWith("  - ")) items.push(l.slice(4).trim());
+      else if (items.length && l.trim()) items[items.length - 1] += ` ${l.trim()}`;
+    }
+    return items.map((t) => t.replace(/^["']|["']$/g, ""));
+  }
+  return [head];
+}
+
+export interface QuestionInfo {
+  slug: string;
+  prompt: string;
+  /** CS: key points. Behavioral: strong-answer signals. */
+  hidden: string[];
+  followUps: string[];
+}
+
+function readQuestions(type: "cs" | "behavioral"): QuestionInfo[] {
+  const dir = path.join(CONTENT_ROOT, type);
+  return fs
+    .readdirSync(dir)
+    .filter((slug) => fs.existsSync(path.join(dir, slug, "question.yaml")))
+    .map((slug) => {
+      const yaml = fs.readFileSync(path.join(dir, slug, "question.yaml"), "utf8");
+      return {
+        slug,
+        prompt: yamlSection(yaml, "prompt")[0] ?? "",
+        hidden: yamlSection(yaml, type === "cs" ? "key_points" : "strong_signals"),
+        followUps: yamlSection(yaml, "follow_ups"),
+      };
+    });
+}
+
+export const csQuestions = () => readQuestions("cs");
+export const behavioralQuestions = () => readQuestions("behavioral");
+
+/** Sends a chat message and waits for the interviewer's next line (scripted driver). */
+export async function say(page: Page, text: string): Promise<void> {
+  const before = await page.locator('[data-from="interviewer"]').count();
+  await page.getByTestId("chat-input").fill(text);
+  await page.getByTestId("chat-input").press("Enter");
+  await expect.poll(() => page.locator('[data-from="interviewer"]').count(), { timeout: 15_000 }).toBeGreaterThan(before);
+}
+
+export const RESUME = `Jordan Rivera
+jordan@example.com | github.com/jrivera
+
+EDUCATION
+State University - B.S. Computer Science, 2022 - 2026
+
+EXPERIENCE
+Acme Cloud - Software Engineering Intern    Jun 2025 - Aug 2025
+- Improved API latency by 40% by adding a Redis cache in front of the catalog service
+- Worked on internal dashboards
+- Led a team of 3 interns to build a scalable data pipeline that processes 2M events per day
+
+PROJECTS
+Tiny Search (2024)
+- Built a full-text search engine in C++ with an inverted index and BM25 ranking
+
+SKILLS
+Languages: Python, C++, SQL
+`;
+
+/** A complete, valid grading reply for the recruiter or behavioral rubric. */
+export function gradingReplyFor(dimensions: string[], score = 3): string {
+  const grade = {
+    dimensions: dimensions.map((id) => ({ id, score, evidence: [`[02:00] evidence for ${id}`] })),
+    recommendation: "lean_hire",
+    strengths: ["Clear answers", "Good specifics", "Owned the work"],
+    improvements: ["Lead with the result", "Add numbers", "Be briefer"],
+    strong_candidate: "Would have led with the outcome and quantified it.",
+  };
+  return `A solid round.\n\n\`\`\`json\n${JSON.stringify(grade, null, 2)}\n\`\`\`\n`;
+}
+
+export const RECRUITER_DIMENSIONS = ["communication", "resume_depth", "motivation", "fundamentals"];
+export const BEHAVIORAL_DIMENSIONS = ["structure", "specificity", "ownership", "impact", "reflection", "relevance", "concision"];
+
+export const STRONG_ANSWER =
+  "At my last internship I led the migration of our billing service to separate services and I wrote the cutover plan myself. We shipped it in six weeks, and I cut incidents by 30 percent. Next time I would involve support earlier.";

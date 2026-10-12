@@ -10,7 +10,7 @@ export interface ChatRequest {
   model: string;
   role: ModelRole;
   /** Why the call is made. Real providers ignore it; the fake provider uses it to pick a scripted reply. */
-  purpose: "interviewer" | "grader" | "approach" | "test";
+  purpose: "interviewer" | "grader" | "approach" | "feedback" | "test";
   /** Large and stable (round template, problem context): cached where the provider supports it. */
   system: string;
   /** Small and per-turn (elapsed time, phase, latest code): sent after the cached prefix. */

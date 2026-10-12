@@ -43,23 +43,33 @@
   - Tests: shared 32, web 58 (leak filter, providers, secrets, config, engine both drivers, packets, grading, scorecard), e2e 18 (DSA 11 + interview/AI 7), all idempotent via test-mode reset.
   - Docs: docs/ai-setup.md, docs/scoring.md, SECURITY.md (keys, leak filter, test mode), DECISIONS.md M3.
 
-## In progress
-- Nothing. Waiting for the user to test M3.
+- **M4 — Recruiter Screen and Behavioral**
+  - **Content types** `cs` (CS fundamentals) and `behavioral`: one `question.yaml` per folder, Zod schemas with closed vocabularies, public/private split (key points, correct options, follow-ups, strong-answer signals are private), `content:new cs|behavioral`, static `content:validate` (no Docker; duplicates checked across the whole bank), authoring briefs `prompts/authoring/{cs,behavioral}.md`, docs in `docs/adding-problems.md`. Loader registry generalized beyond `dsa`.
+  - **Seeds:** 30 CS questions (12 easy, 14 medium, 4 hard, all topics except Java) and 20 behavioral questions (3–5 follow-ups each, competency tags, company-lens tags), committed in validated batches of 10.
+  - **Round adapters:** the interview engine is round-agnostic (`server/interview/rounds/`); the coding round was moved onto the same interface unchanged; the shared interview page logic is now `components/interview/use-interview.ts`.
+  - **Resumes:** paste or PDF upload (`unpdf`, server-side, 5 MB / 8 pages, magic-number check), immutable numbered versions, deterministic parser (sections, entries, bullets, flags for metrics, claims, buzzwords, vague wording) with a preview of what a recruiter would probe.
+  - **Recruiter screen** (28 min): scripted deep dives on flagged bullets, motivation, logistics; adaptive fundamentals (easy start, up on "got it", down on "missed") with key points revealed after each answer and self-grading; AI interviewer with the resume, job description, and hidden pool; live packet; grading packet; resume feedback (connected or packet) with a "no invented numbers" check; debrief with fundamentals review and probed bullets.
+  - **Behavioral** (4–6 questions): scripted flow with signal-driven follow-ups (≤2), soft 2–3 minute timer bar, company lens and competency focus, AI interviewer, live/grading/rewrite packets, auto signals (words, time to answer, I/we, numbers, fillers and pace for voice), stronger-version rewrites that can't invent numbers, debrief that reveals strong-answer signals and follow-ups.
+  - **Story bank** (`/behavioral/stories`): STAR + metrics + reflection + competency tags, competency × story coverage matrix flagging gaps, single-story competencies, and over-reliance.
+  - **Voice input flag** (Settings): Web Speech API in the browser, with the vendor-processing disclosure; filler words and words per minute in the debrief. Typing always works.
+  - **Scoring:** recruiter and behavioral rubrics and auto scores in `@swemock/shared/scoring` (formula v1, docs/scoring.md); scorecard, packets, grading, redo, history, and debrief generalized per round type. Leak filter now also catches short secrets quoted whole.
+  - **Tests:** shared 47, content 10, scripts 4, web 78 (adds round engine for both drivers and the fake AI, packets and feedback validation, story bank, resume versions, PDF extraction, leak filter), e2e 28 (new `rounds.spec.ts`: 10 — PDF upload and versions, recruiter and behavioral in every interviewer mode, hidden-content scans, voice with a stand-in recognizer, story bank, AI with the fake provider). `content:validate --all` passes.
 
-## Next: M4 — Recruiter Screen and Behavioral
-1. Resumes: paste or PDF upload (server-side text extraction, `unpdf`), saved versions, deterministic parse into sections and bullets; target role, company, job description.
-2. Recruiter round: resume phase (scripted deep dives on bullets with numbers/strong claims, then generic recruiter questions; AI: 5–10 resume-specific questions) and CS fundamentals phase (rapid-fire from the bank with adaptive difficulty, key points revealed, self-grade). Resume feedback panel (AI or packet). Packets: live, grading, resume feedback.
-3. Behavioral round: question bank with 3–5 follow-ups each and competency tags; story bank (STAR + metrics + reflection + tags) with a competency × story coverage matrix; mock flow (4–6 questions, 1–3 follow-ups, 2–3 minute soft timer per answer); auto signals (duration, word count, I/we ratio, numbers, fillers when voice is on); stronger-version rewrite (AI or packet; never fabricate, list missing facts).
-4. Voice input flag (Web Speech API) with the vendor-processing note; WPM and filler counts.
-5. Content: CS fundamentals and behavioral schemas + validation (key points; MCQs have exactly one correct option); first batches toward 60 CS / 40 behavioral. Generalize the content loader beyond `dsa` (content types registry) and the scoring rubrics per round type.
-6. Extend the interview engine for non-coding rounds (phase plans per round type; scripted drivers from content).
+## In progress
+- Nothing. Waiting for the user to test M4.
+
+## Next: M5 — Low-Level Design
+Both formats (complete-the-system with a starter repo, and implement-the-class), edit tracking on file 1, the requirement-change mechanic with extension tests, design-review checklist, Mermaid in the debrief, 8 problems in Python and C++ where practical. Project runs already work in the judge (M1).
 
 ## Known issues
-- None known. The company filter has no data yet (`companies: []` on all problems).
 - Ollama and real Anthropic calls are implemented and unit-tested with mocked HTTP, but weren't exercised against live services here (no Ollama install; no paid API calls by policy). Test connection in Settings checks both.
+- Voice input was tested with a stand-in recognizer only; real browser speech recognition (Chrome/Edge/Safari) is untested here.
+- Resume parsing is heuristic: unusual layouts (multi-column PDFs) may split bullets oddly; paste the text instead and check the preview.
 
 ## Cut scope
 - Java and Node/TypeScript languages (user decision during M1); the runner remains pluggable.
 - Warm container pool (optional per spec) — Python runs take ~0.2 s and C++ ~0.6 s including compile.
 - Home-page dashboard for due reviews (M8); due reviews are listed on `/dsa` for now.
 - Persona/company presets for the interviewer prompt (`persona_suffix` placeholder) arrive with company presets in M8.
+- Spaced repetition and a standalone quiz for CS questions: arrives with the fundamentals quiz and flashcards in M7. MCQ questions are supported by the schema but none ship yet.
+- Remaining content toward the v1.0 targets (CS 30 of 60, behavioral 20 of 40) is M9.

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { ContentError, fingerprintTree, hashItemDir, loadContentDir, loadDsaItem, toStored } from "./index";
+import { ContentError, fingerprintTree, hashItemDir, loadBehavioralItem, loadContentDir, loadCsItem, loadDsaItem, toStored } from "./index";
 
 const REPO_CONTENT = path.resolve(import.meta.dirname, "../../../content");
 
@@ -16,6 +16,19 @@ describe("real content", () => {
 
   it("keeps everything private out of the public form", () => {
     for (const item of items) {
+      if (item.type === "cs") {
+        const pub = toStored(item).publicJson;
+        for (const k of item.manifest.key_points) expect(pub, item.slug).not.toContain(JSON.stringify(k).slice(1, -1));
+        expect(pub, item.slug).not.toContain(JSON.stringify(item.manifest.model_answer).slice(1, -1));
+        expect(pub, item.slug).not.toContain('"correct"');
+        continue;
+      }
+      if (item.type === "behavioral") {
+        const pub = toStored(item).publicJson;
+        for (const f of item.manifest.follow_ups) expect(pub, item.slug).not.toContain(JSON.stringify(f).slice(1, -1));
+        for (const f of item.manifest.strong_signals) expect(pub, item.slug).not.toContain(JSON.stringify(f).slice(1, -1));
+        continue;
+      }
       const stored = toStored(item);
       const pub = stored.publicJson;
       expect(pub, item.slug).not.toContain("hiddenTests");
@@ -31,6 +44,7 @@ describe("real content", () => {
 
   it("uses distinct ids for visible and hidden tests", () => {
     for (const item of items) {
+      if (item.type !== "dsa") continue;
       const ids = [...item.visible, ...item.hidden].map((t) => t.id);
       expect(new Set(ids).size).toBe(ids.length);
     }
@@ -74,5 +88,69 @@ describe("loader errors and hashing", () => {
     expect(fingerprintTree(path.dirname(dir))).not.toBe(f1);
     fs.writeFileSync(path.join(dir, "a.txt"), "one");
     expect(hashItemDir(dir)).toBe(h1);
+  });
+});
+
+describe("question content", () => {
+  function tmpQuestion(yaml: string): string {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "swemock-q-"));
+    const item = path.join(dir, "demo-question");
+    fs.mkdirSync(item);
+    fs.writeFileSync(path.join(item, "question.yaml"), yaml);
+    return item;
+  }
+  const cs = `title: Stack versus heap
+difficulty: easy
+topics: [memory]
+version: 1
+prompt: Where do local variables live, and where does \`new\` allocate?
+key_points:
+  - Locals live on the stack and are freed when the function returns
+  - Dynamic allocations live on the heap and need explicit or managed lifetime
+model_answer: Locals go on the stack; dynamically allocated objects go on the heap.
+`;
+
+  it("loads a CS question and keeps the answer private", () => {
+    const item = loadCsItem(tmpQuestion(cs));
+    const stored = toStored(item);
+    expect(stored).toMatchObject({ type: "cs", slug: "demo-question", difficulty: "easy", tags: ["memory"] });
+    expect(JSON.parse(stored.privateJson)).toMatchObject({ keyPoints: expect.any(Array), correctOption: null });
+    expect(stored.publicJson).not.toContain("freed when");
+  });
+
+  it("accepts unquoted list items that contain a colon", () => {
+    const item = loadCsItem(tmpQuestion(cs.replace("  - Locals live on the stack and are freed when the function returns", "  - Stack: locals are freed when the function returns")));
+    expect(item.manifest.key_points[0]).toBe("Stack: locals are freed when the function returns");
+  });
+
+  it("requires key points, and exactly one correct option for an MCQ", () => {
+    expect(() => loadCsItem(tmpQuestion(cs.replace(/key_points:[\s\S]*model_answer/, "key_points:\n  - only one\nmodel_answer")))).toThrow(/key_points/);
+    const mcq = (opts: string) => cs.replace("difficulty: easy", "difficulty: easy\nformat: mcq") + opts;
+    const options = (flags: boolean[]) => "options:\n" + flags.map((f, i) => `  - text: Option ${i}\n    correct: ${f}`).join("\n") + "\n";
+    expect(() => loadCsItem(tmpQuestion(mcq(options([false, false, false]))))).toThrow(/exactly one correct option \(found 0\)/);
+    expect(() => loadCsItem(tmpQuestion(mcq(options([true, true, false]))))).toThrow(/found 2/);
+    const ok = toStored(loadCsItem(tmpQuestion(mcq(options([false, true, false])))));
+    expect(JSON.parse(ok.privateJson).correctOption).toBe(1);
+    expect(JSON.parse(ok.publicJson).options).toEqual(["Option 0", "Option 1", "Option 2"]);
+    expect(() => loadCsItem(tmpQuestion(cs + options([true, false, false])))).toThrow(/only MCQs have options/);
+  });
+
+  it("loads a behavioral question and needs 3–5 follow-ups", () => {
+    const base = `title: Disagreeing with a manager
+competencies: [conflict]
+version: 1
+prompt: Tell me about a time you disagreed with your manager.
+strong_signals:
+  - Describes the disagreement and the stakes
+  - Shows respect while holding a position
+`;
+    const followUps = (n: number) => "follow_ups:\n" + Array.from({ length: n }, (_, i) => `  - Follow-up ${i}?`).join("\n") + "\n";
+    expect(() => loadBehavioralItem(tmpQuestion(base + followUps(2)))).toThrow(/follow_ups/);
+    const item = loadBehavioralItem(tmpQuestion(base + followUps(3)));
+    const stored = toStored(item);
+    expect(stored).toMatchObject({ type: "behavioral", difficulty: null, tags: ["conflict"] });
+    expect(JSON.parse(stored.privateJson).followUps).toHaveLength(3);
+    expect(stored.publicJson).not.toContain("Follow-up");
+    expect(() => loadBehavioralItem(tmpQuestion(base.replace("[conflict]", "[confict]") + followUps(3)))).toThrow(/competencies/);
   });
 });

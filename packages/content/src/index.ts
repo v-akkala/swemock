@@ -2,14 +2,33 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { ContentError, loadDsaItem, toPrivate, toPublic, type LoadedDsa } from "./dsa/load";
+import {
+  behavioralPrivate,
+  behavioralPublic,
+  csPrivate,
+  csPublic,
+  loadBehavioralItem,
+  loadCsItem,
+  type LoadedBehavioral,
+  type LoadedCs,
+} from "./question/load";
 
 export * from "./dsa/manifest";
 export * from "./dsa/load";
+export * from "./question/manifest";
+export * from "./question/load";
 
-export type ContentItem = LoadedDsa;
+export type ContentItem = LoadedDsa | LoadedCs | LoadedBehavioral;
 
-export const CONTENT_TYPES = ["dsa"] as const;
+/** One folder per item under content/<type>/. Adding a type: a loader, a public/private split, and a line here. */
+export const CONTENT_TYPES = ["dsa", "cs", "behavioral"] as const;
 export type ContentType = (typeof CONTENT_TYPES)[number];
+
+const LOADERS: Record<ContentType, (dir: string) => ContentItem> = {
+  dsa: loadDsaItem,
+  cs: loadCsItem,
+  behavioral: loadBehavioralItem,
+};
 
 /** Every file under `dir` (relative paths, sorted), skipping dotfiles and editor junk. */
 export function listFiles(dir: string): string[] {
@@ -70,20 +89,22 @@ export function itemDirs(root: string, type: ContentType): string[] {
 }
 
 export interface LoadResult {
-  items: LoadedDsa[];
+  items: ContentItem[];
   errors: ContentError[];
 }
 
 /** Loads every item under `root`. A broken item is reported in `errors` and doesn't stop the rest. */
 export function loadContentDir(root: string): LoadResult {
-  const items: LoadedDsa[] = [];
+  const items: ContentItem[] = [];
   const errors: ContentError[] = [];
-  for (const dir of itemDirs(root, "dsa")) {
-    try {
-      items.push(loadDsaItem(dir));
-    } catch (e) {
-      if (e instanceof ContentError) errors.push(e);
-      else errors.push(new ContentError(path.basename(dir), (e as Error).message));
+  for (const type of CONTENT_TYPES) {
+    for (const dir of itemDirs(root, type)) {
+      try {
+        items.push(LOADERS[type](dir));
+      } catch (e) {
+        if (e instanceof ContentError) errors.push(e);
+        else errors.push(new ContentError(`${type}/${path.basename(dir)}`, (e as Error).message));
+      }
     }
   }
   return { items, errors };
@@ -94,7 +115,8 @@ export interface StoredItem {
   slug: string;
   version: number;
   title: string;
-  difficulty: string;
+  /** Behavioral questions have none. */
+  difficulty: string | null;
   tags: string[];
   publicJson: string;
   privateJson: string;
@@ -103,18 +125,22 @@ export interface StoredItem {
   contentHash: string;
 }
 
-export function toStored(item: LoadedDsa): StoredItem {
-  return {
+export function toStored(item: ContentItem): StoredItem {
+  const base = {
     type: item.type,
     slug: item.slug,
     version: item.manifest.version,
     title: item.manifest.title,
-    difficulty: item.manifest.difficulty,
-    tags: item.manifest.tags,
-    publicJson: JSON.stringify(toPublic(item)),
-    privateJson: JSON.stringify(toPrivate(item)),
     source: item.manifest.source,
     reviewed: item.manifest.reviewed,
     contentHash: hashItemDir(item.dir),
   };
+  switch (item.type) {
+    case "dsa":
+      return { ...base, difficulty: item.manifest.difficulty, tags: item.manifest.tags, publicJson: JSON.stringify(toPublic(item)), privateJson: JSON.stringify(toPrivate(item)) };
+    case "cs":
+      return { ...base, difficulty: item.manifest.difficulty, tags: item.manifest.topics, publicJson: JSON.stringify(csPublic(item)), privateJson: JSON.stringify(csPrivate(item)) };
+    case "behavioral":
+      return { ...base, difficulty: null, tags: item.manifest.competencies, publicJson: JSON.stringify(behavioralPublic(item)), privateJson: JSON.stringify(behavioralPrivate(item)) };
+  }
 }

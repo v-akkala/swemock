@@ -1,0 +1,34 @@
+# SCAFFOLD: delete this line once the question is finished (content:validate fails while it is here).
+#
+# One behavioral question. Guide: prompts/authoring/behavioral.md
+title: __TITLE__
+competencies: [ownership]            # 1–3 of COMPETENCIES in packages/shared/src/rounds/competencies.ts
+lenses: []                           # optional: amazon:ownership, google:humility, meta:move-fast, ...
+source: authored
+reviewed: false
+version: 1
+
+# The question as an interviewer would ask it.
+prompt: |
+  Tell me about a time you took ownership of a problem that was not strictly yours to fix.
+
+# 3–5 probes, in the order a scripted interviewer uses them.
+follow_ups:
+  - What made you decide it was yours to handle?
+  - What did you personally do, step by step?
+  - What was the measurable result?
+  - What would you do differently now?
+
+# What a strong answer contains (the must-hit points for self-checklists and graders).
+strong_signals:
+  - A specific situation with real stakes
+  - Clear personal actions, not just what the team did
+  - A concrete, preferably measured, result
+
+red_flags:
+  - Describes only what "we" did
+  - Blames others for the problem
+
+# Coaching notes shown in the debrief.
+tips: |
+  Pick a story where you noticed the problem yourself, acted without being asked, and can name a number.

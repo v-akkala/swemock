@@ -2,11 +2,15 @@ import "server-only";
 import { and, desc, eq, gt } from "drizzle-orm";
 import { getDb } from "../db";
 import { drafts, events } from "../db/schema";
-import { getDsa, getDsaPrivate } from "../content/repo";
+import { getDsa } from "../content/repo";
 import { ApiError } from "../http/errors";
-import { addEvent, endSession, getSession, sessionEvents, startSession, type SessionRow } from "../dsa/store";
-import { loadTemplate, render } from "../prompts/templates";
-import { DSA_PHASES, totalMinutes } from "./phases";
+import { addEvent, endSession, getSession, sessionEvents, type SessionRow } from "../dsa/store";
+import { say, type AnswerMeta, type ChatPayload, type Speaker } from "./chat";
+import { DSA_PHASES } from "./phases";
+import { dsaRound } from "./rounds/dsa";
+import { roundFor, type RoundCtx } from "./rounds";
+import { gradeFundamental } from "./rounds/recruiter";
+import { createInterview } from "./session";
 import { readState, writeState, type InterviewState } from "./state";
 
 /**
@@ -15,16 +19,8 @@ import { readState, writeState, type InterviewState } from "./state";
  * (no AI) lives here too; the AI driver is in llm.ts.
  */
 
-export type Speaker = "interviewer" | "candidate" | "system";
-
-export interface ChatPayload {
-  from: Speaker;
-  text: string;
-  phase: string;
-  /** The AI's reply was blocked by the leak filter; `text` is the replacement. */
-  filtered?: boolean;
-  blockedReason?: string;
-}
+export type { ChatPayload, Speaker } from "./chat";
+export { scriptedLines } from "./rounds/dsa";
 
 export interface ChatMessageView {
   id: string;
@@ -32,82 +28,44 @@ export interface ChatMessageView {
   from: Speaker;
   text: string;
   filtered: boolean;
+  /** Set on lines that come from the content bank (question, follow-up, key-point reveal). */
+  tag: string | null;
 }
 
-// ---- scripted lines -----------------------------------------------------------------------------------
+// ---- lifecycle ----------------------------------------------------------------------------------------
 
-const SCRIPT_PATH = "interviewer/dsa-scripted.md";
-
-/** Lines per phase from prompts/interviewer/dsa-scripted.md ("## phase" headings, "- line" items). */
-export function scriptedLines(minutes: number): { lines: Record<string, string[]>; versionTag: string } {
-  const t = loadTemplate(SCRIPT_PATH);
-  const lines: Record<string, string[]> = {};
-  let current: string | null = null;
-  for (const raw of render(t.body, { minutes: String(minutes) }).split("\n")) {
-    const heading = /^##\s+(\w+)/.exec(raw);
-    if (heading) {
-      current = heading[1]!;
-      lines[current] = [];
-    } else if (current && raw.startsWith("- ")) lines[current]!.push(raw.slice(2).trim());
-  }
-  return { lines, versionTag: t.versionTag };
-}
-
-/** Problem follow-ups lead the "test" phase; the generic testing questions come after. */
-function linesFor(session: SessionRow, phaseId: string, state: InterviewState): string[] {
-  const base = scriptedLines(totalMinutes(state.phases)).lines[phaseId] ?? [];
-  if (phaseId !== "test" || !session.itemId) return base;
-  const slug = session.itemId.split(":")[1]!;
-  return [...(getDsaPrivate(slug)?.followups ?? []), ...base];
-}
-
-function say(session: SessionRow, state: InterviewState, from: Speaker, text: string, now: number, extra: Partial<ChatPayload> = {}) {
-  addEvent(session.id, "chat", { from, text, phase: state.phases[state.phaseIndex]!.id, ...extra } satisfies ChatPayload, now);
-}
-
-/** The scripted interviewer's next line in the current phase, if it has one left. */
-function scriptedNext(session: SessionRow, state: InterviewState, now: number): boolean {
-  const phase = state.phases[state.phaseIndex]!;
-  const lines = linesFor(session, phase.id, state);
-  const used = state.scriptUsed[phase.id] ?? 0;
-  if (used >= lines.length) return false;
-  state.scriptUsed[phase.id] = used + 1;
-  say(session, state, "interviewer", lines[used]!, now);
-  return true;
-}
-
-/** Whether the app itself plays a scripted interviewer for this session. */
+/** Whether the app itself plays the interviewer for this session (no AI, not an external chat). */
 function scriptedHere(session: SessionRow, state: InterviewState): boolean {
   return session.driver === "scripted" && state.liveVia === "app";
 }
 
-// ---- lifecycle ----------------------------------------------------------------------------------------
+/** What a round adapter gets: the clock-aware context, with a way to move phases from inside the script. */
+export function roundCtx(session: SessionRow, state: InterviewState, now: number): RoundCtx {
+  return {
+    session,
+    state,
+    now,
+    scripted: session.driver === "scripted",
+    advance: (toPhaseId, reason) => {
+      const index = state.phases.findIndex((p) => p.id === toPhaseId);
+      if (index > state.phaseIndex) advanceTo(session, state, index, reason, now);
+    },
+  };
+}
 
 export function startInterview(opts: { slug: string; driver: "scripted" | "llm"; liveVia: "app" | "packet"; now?: number }): SessionRow {
   const now = opts.now ?? Date.now();
   const problem = getDsa(opts.slug);
   if (!problem) throw new ApiError(404, "That problem doesn't exist.");
-  const phases = DSA_PHASES;
-  const state: InterviewState = {
-    phases,
-    phaseIndex: 0,
-    phaseStartedAt: now,
-    deadline: now + totalMinutes(phases) * 60_000,
+  return createInterview({
+    roundType: "dsa",
+    itemId: problem.id,
+    phases: DSA_PHASES,
+    driver: opts.driver,
     liveVia: opts.liveVia,
-    scriptUsed: {},
-    llmCodeBaseline: null,
-  };
-  const session = startSession({ itemId: problem.id, mode: "interview", driver: opts.driver, state, now });
-  const fresh = getSession(session.id)!;
-  addEvent(session.id, "phase_change", { to: phases[0]!.id, auto: false, reason: "start" }, now);
-  if (opts.liveVia === "app") {
-    // Both drivers open with the scripted greeting: instant, and the AI takes over from the first reply.
-    scriptedNext(fresh, state, now);
-  } else {
-    say(fresh, state, "system", "The conversation happens in the other chat. Copy the live packet to start; this page keeps time and runs your code.", now);
-  }
-  writeState(session.id, state);
-  return getSession(session.id)!;
+    now,
+    opening: (session, state) => dsaRound.opening(roundCtx(session, state, now)),
+  });
 }
 
 function advanceTo(session: SessionRow, state: InterviewState, index: number, reason: string, at: number): void {
@@ -118,7 +76,7 @@ function advanceTo(session: SessionRow, state: InterviewState, index: number, re
   addEvent(session.id, "phase_change", { from: from.id, to: to.id, auto: reason === "time", reason }, at);
   say(session, state, "system", `${to.label} (${to.minutes} min).`, at);
   // One millisecond later so the line sorts after the phase notice (ULIDs aren't ordered within a millisecond).
-  if (scriptedHere(session, state)) scriptedNext(session, state, at + 1);
+  if (state.liveVia === "app") roundFor(session).onPhaseStart(roundCtx(session, state, at + 1), to.id);
 }
 
 /**
@@ -180,11 +138,19 @@ export function onAccepted(sessionId: string, now = Date.now()): void {
   }
 }
 
-/** Scripted driver: log the candidate's message and reply with the next line of the phase, if any. */
-export function candidateSays(sessionId: string, text: string, now = Date.now()): void {
+/** Scripted driver: log the candidate's message and reply with the round's next scripted line, if any. */
+export function candidateSays(sessionId: string, text: string, now = Date.now(), meta: AnswerMeta = {}): void {
   const { session, state } = requireActive(sessionId, now);
-  say(session, state, "candidate", text, now);
-  if (scriptedHere(session, state)) scriptedNext(session, state, now + 1);
+  say(session, state, "candidate", text, now, Object.keys(meta).length ? { meta } : {});
+  if (scriptedHere(session, state)) roundFor(session).onCandidate(roundCtx(session, state, now + 1), text, meta);
+  writeState(session.id, state);
+}
+
+/** Recruiter screen: the candidate graded their own answer to the question on screen. */
+export function gradeFundamentalsQuestion(sessionId: string, questionId: string, grade: 0 | 1 | 2, now = Date.now()): void {
+  const { session, state } = requireActive(sessionId, now);
+  if (state.round?.kind !== "recruiter") throw new ApiError(400, "This interview has no fundamentals questions.");
+  gradeFundamental(roundCtx(session, state, now), questionId, grade);
   writeState(session.id, state);
 }
 
@@ -199,7 +165,7 @@ export function chatMessages(sessionId: string, afterTs = 0): ChatMessageView[] 
     .all()
     .map((e) => {
       const p = JSON.parse(e.payloadJson) as ChatPayload;
-      return { id: e.id, ts: e.ts, from: p.from, text: p.text, filtered: Boolean(p.filtered) };
+      return { id: e.id, ts: e.ts, from: p.from, text: p.text, filtered: Boolean(p.filtered), tag: p.ref?.kind ?? null };
     });
 }
 

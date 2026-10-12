@@ -4,7 +4,17 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 
-type Kind = "dsa-interview-live" | "dsa-grading" | "approach-check";
+export type PacketKind =
+  | "dsa-interview-live"
+  | "dsa-grading"
+  | "approach-check"
+  | "recruiter-live"
+  | "recruiter-grading"
+  | "resume-feedback"
+  | "behavioral-live"
+  | "behavioral-grading"
+  | "behavioral-rewrite";
+type Kind = PacketKind;
 
 interface Packet {
   markdown: string;

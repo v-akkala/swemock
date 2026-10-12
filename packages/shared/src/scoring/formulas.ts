@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Rubric } from "./rubrics";
+import type { BehavioralMetrics } from "../rounds/signals";
 
 /**
  * Scoring formulas (spec §7.5). Versioned: every scorecard stores the version it was computed with, so
@@ -121,6 +122,82 @@ export function autoDsaScores(m: DsaMetrics): SourcedScore[] {
       `${m.runsBeforeFirstSubmit} run(s) before the first submission`,
       `${m.customRunsBeforeAccept} run(s) with custom input before accepted`,
     ],
+  });
+  return out;
+}
+
+// ---- auto (recruiter, behavioral) -------------------------------------------------------------------
+
+export type SelfGrade = 0 | 1 | 2;
+
+export interface FundamentalsAnswer {
+  difficulty: "easy" | "medium" | "hard";
+  /** The candidate's own call after seeing the key points: 0 missed, 1 partly, 2 got it. */
+  grade: SelfGrade;
+}
+
+export interface RecruiterMetrics {
+  /** Questions the candidate self-graded, with their grades. Empty when the questions were asked elsewhere. */
+  fundamentals: FundamentalsAnswer[];
+  probesAsked: number;
+}
+
+const DIFFICULTY_WEIGHT = { easy: 1, medium: 2, hard: 3 } as const;
+
+/**
+ * Fundamentals score from the in-round self-grades, weighted by difficulty (1/2/3). The grades are
+ * recorded one question at a time while the key points are on screen and can't be edited afterwards,
+ * so they count as "auto"; the checklist and AI grading still override them (spec §7.5 ordering).
+ * Bands as for the checklist: <25% → 1, <50% → 2, <75% → 3, else 4.
+ */
+export function autoRecruiterScores(m: RecruiterMetrics): SourcedScore[] {
+  if (m.fundamentals.length === 0) return [];
+  let total = 0;
+  let got = 0;
+  for (const a of m.fundamentals) {
+    total += DIFFICULTY_WEIGHT[a.difficulty] * 2;
+    got += DIFFICULTY_WEIGHT[a.difficulty] * a.grade;
+  }
+  const pct = (got / total) * 100;
+  const count = (g: SelfGrade) => m.fundamentals.filter((a) => a.grade === g).length;
+  return [
+    {
+      dimension: "fundamentals",
+      source: "auto",
+      score: pct < 25 ? 1 : pct < 50 ? 2 : pct < 75 ? 3 : 4,
+      evidence: [
+        `${m.fundamentals.length} question(s) self-graded: ${count(2)} got it, ${count(1)} partly, ${count(0)} missed`,
+        `Weighted by difficulty: ${Math.round(pct)}%`,
+      ],
+    },
+  ];
+}
+
+/** Objective scores for the behavioral dimensions the answer signals can measure. */
+export function autoBehavioralScores(m: BehavioralMetrics): SourcedScore[] {
+  if (m.answers === 0) return [];
+  const out: SourcedScore[] = [];
+  if (m.iShare !== null) {
+    out.push({
+      dimension: "ownership",
+      source: "auto",
+      score: m.iShare >= 0.75 ? 4 : m.iShare >= 0.55 ? 3 : m.iShare >= 0.35 ? 2 : 1,
+      evidence: [`${Math.round(m.iShare * 100)}% of first-person pronouns were "I" rather than "we"`],
+    });
+  }
+  out.push({
+    dimension: "impact",
+    source: "auto",
+    score: m.numberShare >= 0.6 ? 4 : m.numberShare >= 0.4 ? 3 : m.numberShare >= 0.2 ? 2 : 1,
+    evidence: [`${Math.round(m.numberShare * 100)}% of answers contained a number or metric`],
+  });
+  const w = m.avgWords;
+  out.push({
+    dimension: "concision",
+    source: "auto",
+    // About 2–3 minutes of speech is 250–450 words; typed answers run shorter, so the band is wide.
+    score: w >= 90 && w <= 380 ? 4 : (w >= 60 && w < 90) || (w > 380 && w <= 480) ? 3 : (w >= 30 && w < 60) || (w > 480 && w <= 650) ? 2 : 1,
+    evidence: [`Average answer length ${w} words${m.avgDurationSec !== null ? `, ${m.avgDurationSec}s to answer` : ""}`],
   });
   return out;
 }

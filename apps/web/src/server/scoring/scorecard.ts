@@ -1,10 +1,28 @@
 import "server-only";
 import { eq } from "drizzle-orm";
 import { ulid } from "ulid";
-import { DSA_INTERVIEW_RUBRIC, FORMULA_VERSION, autoDsaScores, finalScores, recommend, selfScores, type AiGrade, type DsaMetrics, type Level, type Recommendation, type Rubric, type SourcedScore } from "@swemock/shared/scoring";
+import { summarizeSignals, type BehavioralMetrics } from "@swemock/shared";
+import {
+  FORMULA_VERSION,
+  autoBehavioralScores,
+  autoDsaScores,
+  autoRecruiterScores,
+  finalScores,
+  recommend,
+  rubricForRound,
+  selfScores,
+  type AiGrade,
+  type DsaMetrics,
+  type Level,
+  type Recommendation,
+  type Rubric,
+  type SourcedScore,
+} from "@swemock/shared/scoring";
 import { getDb } from "../db";
 import { scorecards } from "../db/schema";
 import { getSession, sessionEvents, type SessionRow } from "../dsa/store";
+import { answerTurns } from "../interview/answers";
+import { readState } from "../interview/state";
 
 type SubmitPayload = { verdict: string; passed: number; total: number; efficiency?: DsaMetrics["efficiency"] };
 type RunPayload = { custom?: boolean };
@@ -35,6 +53,57 @@ export function dsaMetrics(session: SessionRow): DsaMetrics {
   };
 }
 
+/** Auto scores and the metric lines the debrief shows, per round type. */
+function autoFor(session: SessionRow): { scores: SourcedScore[]; lines: string[]; dsa: DsaMetrics | null; behavioral: BehavioralMetrics | null } {
+  if (session.roundType === "recruiter") {
+    const round = readState(session).round;
+    const rec = round?.kind === "recruiter" ? round : null;
+    const graded = rec ? rec.pool.filter((p) => p.id in rec.grades).map((p) => ({ difficulty: p.difficulty, grade: rec.grades[p.id]! })) : [];
+    const probesAsked = sessionEvents<{ ref?: { kind: string } }>(session.id, "chat").filter((e) => e.payload.ref?.kind === "probe").length;
+    const count = (g: number) => graded.filter((a) => a.grade === g).length;
+    return {
+      scores: autoRecruiterScores({ fundamentals: graded, probesAsked }),
+      lines: [
+        `Resume deep dives asked: ${probesAsked}`,
+        `Fundamentals questions asked: ${rec?.asked.length ?? 0}`,
+        graded.length ? `Self-graded: ${count(2)} got it, ${count(1)} partly, ${count(0)} missed` : "No fundamentals self-grades recorded",
+      ],
+      dsa: null,
+      behavioral: null,
+    };
+  }
+  if (session.roundType === "behavioral") {
+    const answers = answerTurns(session.id).filter((t) => t.counts);
+    const m = summarizeSignals(answers.map((t) => t.signals));
+    return {
+      scores: autoBehavioralScores(m),
+      lines: [
+        `Answers: ${m.answers}, averaging ${m.avgWords} words`,
+        m.iShare !== null ? `Ownership: ${Math.round(m.iShare * 100)}% "I" versus "we"` : "Ownership: no first-person pronouns found",
+        `Answers with a number: ${Math.round(m.numberShare * 100)}%`,
+        m.avgDurationSec !== null ? `Average time to answer: ${m.avgDurationSec}s` : "Time to answer: n/a",
+        ...(m.fillers !== null ? [`Filler words (voice): ${m.fillers}`, m.avgWpm !== null ? `Pace: ${m.avgWpm} words per minute` : "Pace: n/a"] : []),
+      ],
+      dsa: null,
+      behavioral: m,
+    };
+  }
+  const m = dsaMetrics(session);
+  return {
+    scores: autoDsaScores(m),
+    lines: [
+      `Best submission: ${m.bestTotal ? `${m.bestPassed}/${m.bestTotal} tests` : "none"}`,
+      m.accepted ? `Accepted after ${m.minutesToAccept} min` : "Not accepted",
+      `Submissions: ${m.submissions}`,
+      `Runs before the first submit: ${m.runsBeforeFirstSubmit}`,
+      `Runs with your own input: ${m.customRunsBeforeAccept}`,
+      `Hints and nudges: ${m.hintsUsed}`,
+    ],
+    dsa: m,
+    behavioral: null,
+  };
+}
+
 interface StoredCard {
   /** Self and AI scores; auto scores are recomputed from events on every read. */
   scores: SourcedScore[];
@@ -51,8 +120,12 @@ interface StoredCard {
 }
 
 export interface ScorecardView {
+  roundType: string;
   rubric: Rubric;
-  metrics: DsaMetrics;
+  /** Coding rounds only; other rounds show `metricLines`. */
+  metrics: DsaMetrics | null;
+  metricLines: string[];
+  behavioral: BehavioralMetrics | null;
   scores: SourcedScore[];
   final: Record<string, SourcedScore>;
   recommendation: Recommendation | null;
@@ -69,16 +142,19 @@ function loadStored(sessionId: string): { id: string | null; card: StoredCard } 
 }
 
 function view(session: SessionRow, card: StoredCard): ScorecardView {
-  const rubric = DSA_INTERVIEW_RUBRIC;
-  const metrics = dsaMetrics(session);
-  const scores = [...autoDsaScores(metrics), ...card.scores];
+  const rubric = rubricForRound(session.roundType);
+  const auto = autoFor(session);
+  const scores = [...auto.scores, ...card.scores];
   const final = Object.fromEntries(finalScores(rubric, scores));
   return {
+    roundType: session.roundType,
     rubric,
-    metrics,
+    metrics: auto.dsa,
+    metricLines: auto.lines,
+    behavioral: auto.behavioral,
     scores,
     final,
-    recommendation: recommend(rubric, scores, { failedHiddenTests: !metrics.accepted }),
+    recommendation: recommend(rubric, scores, { failedHiddenTests: auto.dsa ? !auto.dsa.accepted : false }),
     selfTicked: card.selfTicked,
     ai: card.ai,
     formulaVersion: FORMULA_VERSION,
@@ -108,10 +184,11 @@ export function loadScorecard(sessionId: string): ScorecardView {
 export function saveSelfScore(sessionId: string, ticked: string[]): ScorecardView {
   const session = getSession(sessionId)!;
   const { id, card } = loadStored(sessionId);
-  const valid = new Set(DSA_INTERVIEW_RUBRIC.dimensions.flatMap((d) => d.items.map((i) => i.id)));
+  const rubric = rubricForRound(session.roundType);
+  const valid = new Set(rubric.dimensions.flatMap((d) => d.items.map((i) => i.id)));
   const set = new Set(ticked.filter((t) => valid.has(t)));
   card.selfTicked = [...set];
-  card.scores = [...card.scores.filter((s) => s.source !== "self"), ...selfScores(DSA_INTERVIEW_RUBRIC, set)];
+  card.scores = [...card.scores.filter((s) => s.source !== "self"), ...selfScores(rubric, set)];
   return save(session, id, card);
 }
 

@@ -152,4 +152,221 @@ export const DSA_INTERVIEW_RUBRIC: Rubric = {
   ],
 };
 
-export const RUBRICS: Record<string, Rubric> = { [DSA_INTERVIEW_RUBRIC.id]: DSA_INTERVIEW_RUBRIC };
+/** Spec §8.1: communication, resume ownership and depth, motivation, fundamentals accuracy, and red flags. */
+export const RECRUITER_RUBRIC: Rubric = {
+  id: "recruiter-screen",
+  version: "1",
+  dimensions: [
+    {
+      id: "communication",
+      label: "Communication",
+      description: "Clear, structured, and appropriately brief answers; listens to the question being asked.",
+      anchors: [
+        "Rambling or evasive; answers a different question than the one asked.",
+        "Understandable but unstructured, too long, or too terse to follow.",
+        "Clear and organized; stays on the question; adjusts when the recruiter redirects.",
+        "Concise, well-structured, and engaging; makes the recruiter's job easy.",
+      ],
+      items: [
+        { id: "co-intro", kind: "must", text: "Gave a focused 1–2 minute introduction (who I am, what I've done, what I want next)" },
+        { id: "co-direct", kind: "must", text: "Answered the question that was asked before adding detail" },
+        { id: "co-brief", kind: "strong", text: "Kept answers short enough to leave room for follow-ups" },
+        { id: "co-ramble", kind: "red", text: "Rambled, or talked past the question for most of an answer" },
+      ],
+    },
+    {
+      id: "resume_depth",
+      label: "Resume ownership and depth",
+      description: "Can explain their own work in detail: what they did, how, why, and what the result was.",
+      anchors: [
+        "Cannot explain their own project, or the claims don't hold up under one follow-up.",
+        "Describes what the team did, but is vague on their own part or on how results were measured.",
+        "Explains their own contribution and the main technical choices; backs up the numbers.",
+        "Deep, specific, and honest: contribution, tradeoffs, what went wrong, and how the result was measured.",
+      ],
+      items: [
+        { id: "rd-own", kind: "must", text: "Separated what I did from what the team did" },
+        { id: "rd-numbers", kind: "must", text: "Explained how each number or metric on my resume was measured" },
+        { id: "rd-why", kind: "strong", text: "Explained why we chose that design or tool, and what the alternatives were" },
+        { id: "rd-learn", kind: "strong", text: "Said what I would do differently" },
+        { id: "rd-overclaim", kind: "red", text: "Claimed more than I could back up (overclaiming)" },
+        { id: "rd-blank", kind: "red", text: "Could not explain a project on my own resume" },
+      ],
+    },
+    {
+      id: "motivation",
+      label: "Motivation and fit",
+      description: "Why this role and company, and whether logistics and expectations line up.",
+      anchors: [
+        "No reason beyond 'it's a good company'; unprepared for basic logistics.",
+        "A generic reason; vague on timeline or what they are looking for.",
+        "A specific reason tied to the role and their background; clear on logistics.",
+        "Specific, researched, and credible; connects their goals to the role; clear on logistics and next steps.",
+      ],
+      items: [
+        { id: "mo-why", kind: "must", text: "Gave a specific reason for this company and role (not just its size or brand)" },
+        { id: "mo-fit", kind: "must", text: "Connected the role to my background and what I want to learn" },
+        { id: "mo-logistics", kind: "must", text: "Had clear answers on graduation date, location, and timeline" },
+        { id: "mo-questions", kind: "strong", text: "Asked thoughtful questions about the role or team" },
+        { id: "mo-generic", kind: "red", text: "Gave an answer that could have been about any company" },
+      ],
+    },
+    {
+      id: "fundamentals",
+      label: "CS fundamentals accuracy",
+      description: "Correct, reasonably complete answers to rapid-fire fundamentals questions.",
+      anchors: [
+        "Mostly wrong or unable to answer basic questions.",
+        "Gets the gist of easy questions; misses key points on the rest.",
+        "Accurate on most questions, including the main key points; a few gaps.",
+        "Accurate and complete, with correct reasoning on harder questions; says so when unsure.",
+      ],
+      items: [
+        { id: "fu-key", kind: "must", text: "Hit the main key points on most questions" },
+        { id: "fu-basics", kind: "must", text: "Got the basics right (Big-O of common operations, process vs thread, TCP vs UDP, ACID)" },
+        { id: "fu-hard", kind: "strong", text: "Reasoned correctly through at least one harder question" },
+        { id: "fu-honest", kind: "strong", text: "Said so when I wasn't sure instead of guessing confidently" },
+        { id: "fu-wrong", kind: "red", text: "Stated something confidently that was wrong" },
+      ],
+    },
+  ],
+};
+
+/** Spec §8.5: STAR structure, specificity, ownership, impact, reflection, relevance, concision. */
+export const BEHAVIORAL_RUBRIC: Rubric = {
+  id: "behavioral",
+  version: "1",
+  dimensions: [
+    {
+      id: "structure",
+      label: "STAR structure",
+      description: "Situation, task, action, and result are all present and easy to follow.",
+      anchors: [
+        "No recognizable story, or it's a general opinion instead of an example.",
+        "A story, but with missing parts (often the result) or jumbled order.",
+        "Clear situation, action, and result, in a sensible order.",
+        "Tight setup, a clear task, detailed actions, and a concrete result, with no wasted words.",
+      ],
+      items: [
+        { id: "st-context", kind: "must", text: "Set the scene briefly (situation and what I was responsible for)" },
+        { id: "st-action", kind: "must", text: "Spent most of the answer on what I did" },
+        { id: "st-result", kind: "must", text: "Ended with a clear result" },
+        { id: "st-hypo", kind: "red", text: "Answered with what I would do instead of what I did" },
+      ],
+    },
+    {
+      id: "specificity",
+      label: "Specificity",
+      description: "Concrete details: names, systems, dates, constraints, decisions.",
+      anchors: [
+        "Generalities only ('I usually…', 'we always…').",
+        "Some detail, but key decisions and constraints stay vague.",
+        "Concrete about the situation, the decision, and the constraints.",
+        "Vivid and precise; an interviewer could verify the story with one more question.",
+      ],
+      items: [
+        { id: "sp-concrete", kind: "must", text: "Used one real example with concrete details (system, people involved, timeline)" },
+        { id: "sp-decision", kind: "strong", text: "Described the decision points and why I chose what I chose" },
+        { id: "sp-vague", kind: "red", text: "Spoke in generalities ('we usually…') instead of one example" },
+      ],
+    },
+    {
+      id: "ownership",
+      label: "Ownership",
+      description: "Makes clear what the candidate personally did, decided, and was accountable for.",
+      anchors: [
+        "Credits everything to 'we' or others; the candidate's role is unclear.",
+        "Some personal actions, but mixes them with the team's.",
+        "Clearly says what they did and decided; credits others appropriately.",
+        "Takes accountability, including for mistakes; shows initiative beyond the assigned task.",
+      ],
+      items: [
+        { id: "ow-i", kind: "must", text: "Said what I specifically did (I, not only we)" },
+        { id: "ow-credit", kind: "strong", text: "Credited teammates where it was due" },
+        { id: "ow-blame", kind: "red", text: "Blamed others or circumstances for what went wrong" },
+      ],
+    },
+    {
+      id: "impact",
+      label: "Impact and metrics",
+      description: "Shows the result and its size, with numbers where possible.",
+      anchors: [
+        "No result stated.",
+        "A result, but qualitative and unmeasured.",
+        "A clear result with at least one number or concrete outcome.",
+        "Measurable impact on users, the team, or the business, with before/after.",
+      ],
+      items: [
+        { id: "im-result", kind: "must", text: "Stated the outcome" },
+        { id: "im-number", kind: "must", text: "Gave at least one number or concrete measure" },
+        { id: "im-beyond", kind: "strong", text: "Explained why the result mattered beyond my own task" },
+      ],
+    },
+    {
+      id: "reflection",
+      label: "Reflection",
+      description: "Learns from the experience and can say what they would change.",
+      anchors: [
+        "No reflection, or only defensiveness.",
+        "A generic lesson ('communication is important').",
+        "A specific lesson and what they would do differently.",
+        "Honest, specific insight that changed how they work since, with evidence.",
+      ],
+      items: [
+        { id: "re-differently", kind: "must", text: "Said what I would do differently" },
+        { id: "re-learned", kind: "strong", text: "Described how I've applied the lesson since" },
+        { id: "re-defensive", kind: "red", text: "Got defensive or claimed there was nothing to improve" },
+      ],
+    },
+    {
+      id: "relevance",
+      label: "Relevance",
+      description: "The story answers the question that was asked and fits the competency being probed.",
+      anchors: [
+        "Answers a different question.",
+        "Loosely related; the interviewer has to dig for the point.",
+        "Directly answers the question with a fitting example.",
+        "An ideal example for the competency, with the right scope for the role.",
+      ],
+      items: [
+        { id: "rl-fit", kind: "must", text: "Chose an example that fits the question" },
+        { id: "rl-scope", kind: "strong", text: "Picked an example with meaningful scope and stakes" },
+        { id: "rl-off", kind: "red", text: "Told a story that didn't answer the question" },
+      ],
+    },
+    {
+      id: "concision",
+      label: "Concision",
+      description: "Answers in about two to three minutes without losing the thread.",
+      anchors: [
+        "Rambles for far too long, or answers in a sentence.",
+        "Noticeably too long or too short; wanders.",
+        "Within about two to three minutes; mostly focused.",
+        "Tight and well-paced; leaves room for follow-up questions.",
+      ],
+      items: [
+        { id: "cn-time", kind: "must", text: "Kept each answer to roughly two to three minutes" },
+        { id: "cn-focus", kind: "strong", text: "Stayed on the main thread without tangents" },
+        { id: "cn-ramble", kind: "red", text: "Needed to be cut off or redirected" },
+      ],
+    },
+  ],
+};
+
+export const RUBRICS: Record<string, Rubric> = {
+  [DSA_INTERVIEW_RUBRIC.id]: DSA_INTERVIEW_RUBRIC,
+  [RECRUITER_RUBRIC.id]: RECRUITER_RUBRIC,
+  [BEHAVIORAL_RUBRIC.id]: BEHAVIORAL_RUBRIC,
+};
+
+/** The rubric for a round type (`sessions.round_type`). */
+export function rubricForRound(roundType: string): Rubric {
+  switch (roundType) {
+    case "recruiter":
+      return RECRUITER_RUBRIC;
+    case "behavioral":
+      return BEHAVIORAL_RUBRIC;
+    default:
+      return DSA_INTERVIEW_RUBRIC;
+  }
+}

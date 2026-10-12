@@ -7,8 +7,11 @@ import { AiError, type ChatMessage } from "../ai/types";
 import { addEvent, getSession, type SessionRow } from "../dsa/store";
 import { loadTemplate, render } from "../prompts/templates";
 import { lineDiff } from "./diff";
-import { chatMessages, latestCode, latestJudgeResult, requireActive, type ChatPayload } from "./engine";
+import type { AnswerMeta, ChatPayload } from "./chat";
+import { chatMessages, latestCode, latestJudgeResult, requireActive, roundCtx } from "./engine";
 import { phasePlanText, totalMinutes } from "./phases";
+import { roundFor } from "./rounds";
+import { behavioralLlm, recruiterLlm, timeLines, type LlmRound } from "./rounds/llm";
 import { readState, writeState, type InterviewState } from "./state";
 
 const NUDGE = "<<nudge>>";
@@ -60,15 +63,8 @@ function systemPrompt(session: SessionRow, state: InterviewState): { text: strin
 
 /** The per-turn note: time, phase, what changed in the code, the latest test result. */
 function turnContext(session: SessionRow, state: InterviewState, now: number): { text: string; code: string | null } {
-  const phase = state.phases[state.phaseIndex]!;
-  const elapsed = Math.floor((now - session.startedAt) / 60_000);
-  const phaseLeft = Math.max(0, Math.ceil((state.phaseStartedAt + phase.minutes * 60_000 - now) / 60_000));
-  const totalLeft = Math.max(0, Math.ceil((state.deadline - now) / 60_000));
   const code = latestCode(session);
-  const lines = [
-    "<context>",
-    `Elapsed: ${elapsed} min. Current phase: ${phase.label} (${phaseLeft} min left in this phase, ${totalLeft} min left overall).`,
-  ];
+  const lines = timeLines(session, state, now);
   if (code) {
     const changed = state.llmCodeBaseline === null ? code.code : lineDiff(state.llmCodeBaseline, code.code);
     lines.push(
@@ -85,6 +81,20 @@ function turnContext(session: SessionRow, state: InterviewState, now: number): {
   return { text: lines.join("\n"), code: code?.code ?? null };
 }
 
+const dsaLlm: LlmRound = {
+  blockCodeBlocks: true,
+  system: systemPrompt,
+  context: turnContext,
+  leak(session) {
+    const priv = getDsaPrivate(session.itemId!.split(":")[1]!)!;
+    return { code: Object.values(priv.references).filter((s): s is string => Boolean(s)), prose: [priv.editorialMd, ...priv.hints.slice(2)] };
+  },
+};
+
+function llmRound(session: SessionRow): LlmRound {
+  return session.roundType === "recruiter" ? recruiterLlm : session.roundType === "behavioral" ? behavioralLlm : dsaLlm;
+}
+
 function transcript(sessionId: string): ChatMessage[] {
   return chatMessages(sessionId)
     .filter((m) => m.from !== "system")
@@ -95,20 +105,35 @@ function transcript(sessionId: string): ChatMessage[] {
  * The candidate said something to the AI interviewer: log it, stream the reply through the leak filter,
  * and record the reply (and any nudge) when it's complete.
  */
-export async function* interviewerReply(sessionId: string, text: string, signal?: AbortSignal): AsyncGenerator<InterviewerEvent> {
+export async function* interviewerReply(
+  sessionId: string,
+  text: string,
+  signal?: AbortSignal,
+  meta: AnswerMeta = {},
+): AsyncGenerator<InterviewerEvent> {
   const now = Date.now();
-  const { session, state } = requireActive(sessionId, now);
-  const phaseId = state.phases[state.phaseIndex]!.id;
-  addEvent(session.id, "chat", { from: "candidate", text, phase: phaseId } satisfies ChatPayload, now);
+  const first = requireActive(sessionId, now);
+  const { session } = first;
+  let state = first.state;
+  addEvent(session.id, "chat", { from: "candidate", text, phase: state.phases[state.phaseIndex]!.id, ...(Object.keys(meta).length ? { meta } : {}) } satisfies ChatPayload, now);
 
-  const slug = session.itemId!.split(":")[1]!;
-  const priv = getDsaPrivate(slug)!;
-  const filter = buildLeakFilter(
-    { code: Object.values(priv.references).filter((s): s is string => Boolean(s)), prose: [priv.editorialMd, ...priv.hints.slice(2)] },
-    { blockCodeBlocks: true },
-  );
-  const system = systemPrompt(session, state);
-  const context = turnContext(session, state, now);
+  // Rounds may move the phase before the model speaks (behavioral: the first reply opens the questions).
+  const hook = roundFor(session).beforeLlmTurn;
+  if (hook) {
+    hook(roundCtx(session, state, now + 1));
+    writeState(session.id, state);
+    state = readState(getSession(session.id)!);
+  }
+  const phaseId = state.phases[state.phaseIndex]!.id;
+  // The reply sorts after the candidate's message and any phase notice written just before it, even if the
+  // model answers within the same millisecond (the fake provider does).
+  const replyTs = () => Math.max(Date.now(), now + 2);
+
+  const slug = session.itemId?.split(":")[1] ?? "";
+  const round = llmRound(session);
+  const filter = buildLeakFilter(round.leak(session, state), { blockCodeBlocks: round.blockCodeBlocks });
+  const system = round.system(session, state);
+  const context = round.context(session, state, now);
 
   let full = "";
   let sent = 0;
@@ -131,7 +156,7 @@ export async function* interviewerReply(sessionId: string, text: string, signal?
       const check = filter.check(full);
       if (check.leaked) {
         controller.abort();
-        addEvent(session.id, "chat", { from: "interviewer", text: SAFE_REPLY, phase: phaseId, filtered: true, blockedReason: check.reason! } satisfies ChatPayload);
+        addEvent(session.id, "chat", { from: "interviewer", text: SAFE_REPLY, phase: phaseId, filtered: true, blockedReason: check.reason! } satisfies ChatPayload, replyTs());
         yield { type: "replace", text: SAFE_REPLY };
         yield { type: "done", id: null };
         return;
@@ -155,8 +180,8 @@ export async function* interviewerReply(sessionId: string, text: string, signal?
   // The whole reply passed the filter: release what was held back.
   const visible = full.replaceAll(NUDGE, "").trimStart();
   if (visible.length > sent) yield { type: "delta", text: visible.slice(sent) };
-  if (nudged) addEvent(session.id, "hint", { slug, level: 0, source: "interviewer", nudge: true, text: finalText });
-  addEvent(session.id, "chat", { from: "interviewer", text: finalText, phase: phaseId } satisfies ChatPayload);
+  if (nudged) addEvent(session.id, "hint", { slug, level: 0, source: "interviewer", nudge: true, text: finalText }, replyTs());
+  addEvent(session.id, "chat", { from: "interviewer", text: finalText, phase: phaseId } satisfies ChatPayload, replyTs());
   const latest = readState(getSession(session.id)!);
   latest.llmCodeBaseline = context.code;
   writeState(session.id, latest);

@@ -36,4 +36,14 @@ describe("leak filter", () => {
     const lenient = buildLeakFilter({ code: [reference], prose: [] }, { blockCodeBlocks: false });
     expect(lenient.check("```python\na = 1\nb = 2\nc = 3\nd = 4\n```").leaked).toBe(false);
   });
+
+  it("catches a short secret (such as a one-line key point) quoted whole, but not a loose paraphrase", () => {
+    const f = buildLeakFilter(
+      { code: [], prose: ["Atomicity means a transaction happens entirely or not at all", "Short one"] },
+      { blockCodeBlocks: false },
+    );
+    expect(f.check("Sure: Atomicity means a transaction happens entirely or not at all, that's the answer.").leaked).toBe(true);
+    expect(f.check("Can you say what atomicity means for a transaction?").leaked).toBe(false);
+    expect(f.check("Short one").leaked).toBe(false);
+  });
 });

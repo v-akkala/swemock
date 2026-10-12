@@ -1,0 +1,26 @@
+# SCAFFOLD: delete this line once the question is finished (content:validate fails while it is here).
+#
+# One CS fundamentals question. Guide: prompts/authoring/cs.md
+title: __TITLE__
+difficulty: __DIFFICULTY__           # easy | medium | hard
+topics: [data-structures]            # see CS_TOPICS in packages/shared/src/rounds/competencies.ts
+source: authored
+reviewed: false                      # a maintainer flips this after reading the question (or approves it in the app)
+version: 1
+format: short                        # short | mcq (an MCQ needs `options` with exactly one `correct: true`)
+
+# The question as an interviewer would ask it out loud.
+prompt: |
+  What is the average-case time complexity of looking up a key in a hash map, and when does it degrade?
+
+# What a good answer covers: revealed to the candidate after they answer.
+key_points:
+  - Average O(1): hash the key, jump to a bucket, compare a few entries
+  - Degrades toward O(n) when many keys collide (a poor hash function or an adversarial input)
+  - Resizing keeps the load factor low, which keeps buckets short
+
+model_answer: |
+  Lookup is O(1) on average because the hash picks a bucket directly and buckets stay short while the load
+  factor is bounded. In the worst case every key lands in one bucket and lookup is O(n).
+
+follow_up: How would you handle two keys that hash to the same bucket?

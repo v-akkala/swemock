@@ -18,7 +18,7 @@ export default async function DebriefPage({ params }: { params: Promise<{ id: st
           ← History
         </Link>
         <h1 className="mt-2 text-2xl font-semibold">
-          Debrief{data.problem ? `: ${data.problem.title}` : ""}
+          Debrief{data.title ? `: ${data.title}` : ""}
         </h1>
         <p className="text-muted-foreground text-sm">
           {data.session.mode === "interview" ? "Mock interview" : data.session.mode === "oa" ? "Online assessment" : "Practice"} ·{" "}

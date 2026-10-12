@@ -54,3 +54,27 @@ it counts as reviewed.
 Authored content ships with `reviewed: false`. Open `/content-review` in the app, read each item, and
 approve it. Approval is stored in the local database; editing an item resets it, because the content
 changed.
+
+# Adding questions (CS fundamentals and behavioral)
+
+Questions are one folder each with a single `question.yaml`, and they need no Docker or sandbox:
+
+```bash
+pnpm content:new cs hash-map-lookup-cost --difficulty easy     # content/cs/<slug>/question.yaml
+pnpm content:new behavioral took-ownership                     # content/behavioral/<slug>/question.yaml
+pnpm content:validate cs/hash-map-lookup-cost                  # schema + checks, in a fraction of a second
+pnpm content:validate --type cs                                # a whole bank
+```
+
+Edit the scaffold (it is a small valid example), delete the `# SCAFFOLD` line, and commit. A running app
+picks the file up within a few seconds, exactly like a DSA problem. Guides to hand to an AI drafting tool:
+`prompts/authoring/cs.md` and `prompts/authoring/behavioral.md`.
+
+What is checked: the schema (closed vocabularies for topics, competencies, and lenses, so typos fail);
+CS questions have 2–8 distinct key points and a real model answer, and an MCQ has exactly one correct
+option; behavioral questions have 3–5 distinct follow-ups and at least two strong-answer signals; no two
+questions share a title or prompt (checked against every question already on disk).
+
+Key points and strong-answer signals are **private**: the browser sees a CS question's prompt, and the
+key points appear only after the candidate answers (recruiter screen) or in the debrief. A behavioral
+question's follow-ups, signals, and red flags appear only in the debrief.

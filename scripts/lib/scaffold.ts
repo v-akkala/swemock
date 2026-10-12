@@ -8,9 +8,11 @@ function titleFromSlug(slug: string): string {
   return slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export function scaffoldDsa(contentRoot: string, slug: string, opts: { title?: string; difficulty?: string }): string {
+export type ScaffoldType = "dsa" | "cs" | "behavioral";
+
+export function scaffold(type: ScaffoldType, contentRoot: string, slug: string, opts: { title?: string; difficulty?: string }): string {
   if (!SLUG_RE.test(slug)) throw new Error(`"${slug}" is not a valid slug: use lowercase words separated by hyphens`);
-  const dest = path.join(contentRoot, "dsa", slug);
+  const dest = path.join(contentRoot, type, slug);
   if (fs.existsSync(dest)) throw new Error(`${path.relative(process.cwd(), dest)} already exists`);
   const vars: Record<string, string> = {
     __SLUG__: slug,
@@ -28,6 +30,8 @@ export function scaffoldDsa(contentRoot: string, slug: string, opts: { title?: s
       }
     }
   };
-  copy(path.join(TEMPLATES, "dsa"), dest);
+  copy(path.join(TEMPLATES, type), dest);
   return dest;
 }
+
+export const scaffoldDsa = (contentRoot: string, slug: string, opts: { title?: string; difficulty?: string }) => scaffold("dsa", contentRoot, slug, opts);

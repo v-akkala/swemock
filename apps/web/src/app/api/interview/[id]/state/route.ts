@@ -14,6 +14,7 @@ export function GET(request: Request, ctx: { params: Promise<{ id: string }> }) 
     const { session, state } = settleInterview(id, now);
     const phase = state.phases[state.phaseIndex]!;
     const usage = sessionUsage(id);
+    const round = state.round;
     return Response.json({
       status: session.status,
       serverNow: now,
@@ -27,6 +28,9 @@ export function GET(request: Request, ctx: { params: Promise<{ id: string }> }) 
       messages: chatMessages(id, after),
       usage: { total: usage.total, cap: usage.cap },
       aiConnected: resolveAi().connected,
+      roundType: session.roundType,
+      // Recruiter screen: the question waiting for the candidate's self-grade, if any.
+      pendingGrade: round?.kind === "recruiter" ? round.pending : null,
     });
   });
 }

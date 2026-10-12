@@ -6,6 +6,7 @@ import { contentItems, scorecards, sessions } from "@/server/db/schema";
 import { oaResults, parseState, settleOa } from "@/server/dsa/oa";
 import { sessionEvents } from "@/server/dsa/store";
 import { settleInterview } from "@/server/interview/engine";
+import { readState } from "@/server/interview/state";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "History · swemock" };
@@ -28,7 +29,10 @@ export default function HistoryPage() {
       else if (s.mode === "interview" && recs.get(s.id)) result = RECOMMENDATION_LABELS[recs.get(s.id) as keyof typeof RECOMMENDATION_LABELS];
       else if (submits.some((e) => e.payload.verdict === "accepted")) result = "Accepted";
       else if (submits.length) result = `${submits.at(-1)!.payload.verdict.replace(/_/g, " ")}`;
-      const problem = s.mode === "oa" ? parseState(s).slugs.map((slug) => titles.get(`dsa:${slug}`) ?? slug).join(" + ") : titles.get(s.itemId ?? "") ?? "—";
+      const round = s.mode === "interview" ? readState(s).round : undefined;
+      const problem = round?.kind === "recruiter" ? `Recruiter screen: ${round.config.role}${round.config.company ? ` at ${round.config.company}` : ""}`
+        : round?.kind === "behavioral" ? `Behavioral: ${round.config.questionIds.length} questions`
+        : s.mode === "oa" ? parseState(s).slugs.map((slug) => titles.get(`dsa:${slug}`) ?? slug).join(" + ") : titles.get(s.itemId ?? "") ?? "—";
       const href =
         s.status === "active"
           ? s.mode === "interview"
@@ -56,7 +60,7 @@ export default function HistoryPage() {
             <tr>
               <th className="py-1">When</th>
               <th>Type</th>
-              <th>Problem</th>
+              <th>Problem or round</th>
               <th>Status</th>
               <th>Result</th>
             </tr>

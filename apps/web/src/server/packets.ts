@@ -11,22 +11,27 @@ import { chatMessages, latestCode, settleInterview } from "./interview/engine";
 import { phasePlanText, totalMinutes } from "./interview/phases";
 import { readState } from "./interview/state";
 import { loadTemplate, render } from "./prompts/templates";
+import { PACKET_KINDS, rubricText, stamp, type Packet, type PacketKind } from "./packet-util";
+import {
+  FEEDBACK_SCHEMAS,
+  behavioralGrading,
+  behavioralLive,
+  checkFeedback,
+  isFeedbackKind,
+  recruiterGrading,
+  recruiterLive,
+  resumeFeedbackPacket,
+  rewritePacket,
+  storedFeedback,
+  type FeedbackKind,
+} from "./packets-conversation";
 import { dsaMetrics, saveAiGrade, type ScorecardView } from "./scoring/scorecard";
 
 /**
  * Copy-prompt packets (spec §2.4–2.5): self-contained markdown a user pastes into any chatbot.
  * Live packets carry only what the candidate may see. Grading packets exist only after the round ends.
  */
-export const PACKET_KINDS = ["dsa-interview-live", "dsa-grading", "approach-check"] as const;
-export type PacketKind = (typeof PACKET_KINDS)[number];
-
-export interface Packet {
-  kind: PacketKind;
-  markdown: string;
-  filename: string;
-  versionTag: string;
-  sessionId: string;
-}
+export { PACKET_KINDS, rubricText, type Packet, type PacketKind };
 
 function slugOf(session: SessionRow): string {
   if (!session.itemId) throw new ApiError(400, "This session has no problem.");
@@ -37,21 +42,6 @@ function signatureLine(slug: string): string {
   const sig = getDsa(slug)!.pub.signature;
   const stub = generateStub(sig, "python");
   return stub.split("\n").find((l) => /\bdef |\bclass /.test(l) && !l.trim().startsWith("#"))?.trim() ?? sig.kind;
-}
-
-function stamp(session: SessionRow, ts: number): string {
-  const s = Math.max(0, Math.floor((ts - session.startedAt) / 1000));
-  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
-}
-
-export function rubricText(rubric: Rubric): string {
-  return rubric.dimensions
-    .map(
-      (d) =>
-        `### ${d.label} (id: \`${d.id}\`)\n${d.description}\n` +
-        d.anchors.map((a, i) => `- **${i + 1}**: ${a}`).join("\n"),
-    )
-    .join("\n\n");
 }
 
 // ---- live ------------------------------------------------------------------------------------------
@@ -76,7 +66,7 @@ function livePacket(session: SessionRow): Packet {
 
 // ---- grading ------------------------------------------------------------------------------------------
 
-function gradingPacket(session: SessionRow): Packet {
+function dsaGradingPacket(session: SessionRow): Packet {
   if (session.mode !== "interview") throw new ApiError(400, "Grading packets are for interviews.");
   const s = settleInterview(session.id).session;
   if (s.status === "active") throw new ApiError(409, "The grading packet is available after the interview ends.");
@@ -158,6 +148,22 @@ function approachPacket(slug: string, approach: string, sessionId?: string): Pac
   return { kind: "approach-check", markdown, filename: `swemock-approach-${slug}.md`, versionTag: t.versionTag, sessionId: session.id };
 }
 
+/** The grading packet and rubric for whatever kind of round this session is. */
+function gradingFor(session: SessionRow): { packet: Packet; rubric: Rubric } {
+  if (session.mode !== "interview") throw new ApiError(400, "Grading packets are for interviews.");
+  if (session.roundType === "recruiter") return recruiterGrading(session);
+  if (session.roundType === "behavioral") return behavioralGrading(session);
+  return { packet: dsaGradingPacket(session), rubric: DSA_INTERVIEW_RUBRIC };
+}
+
+const GRADING_KINDS: Partial<Record<PacketKind, string>> = { "dsa-grading": "dsa", "recruiter-grading": "recruiter", "behavioral-grading": "behavioral" };
+const LIVE_KINDS: Partial<Record<PacketKind, string>> = { "dsa-interview-live": "dsa", "recruiter-live": "recruiter", "behavioral-live": "behavioral" };
+
+function requireRound(session: SessionRow, kind: PacketKind): void {
+  const want = GRADING_KINDS[kind] ?? LIVE_KINDS[kind] ?? (kind === "resume-feedback" ? "recruiter" : kind === "behavioral-rewrite" ? "behavioral" : null);
+  if (want && session.roundType !== want) throw new ApiError(400, "That packet doesn't belong to this kind of interview.");
+}
+
 export function renderPacket(req: { kind: PacketKind; sessionId?: string; slug?: string; approach?: string }): Packet {
   if (req.kind === "approach-check") {
     if (!req.slug) throw new ApiError(400, "Missing problem.");
@@ -165,7 +171,21 @@ export function renderPacket(req: { kind: PacketKind; sessionId?: string; slug?:
   }
   const session = req.sessionId ? getSession(req.sessionId) : null;
   if (!session) throw new ApiError(404, "Unknown session.");
-  return req.kind === "dsa-interview-live" ? livePacket(session) : gradingPacket(session);
+  requireRound(session, req.kind);
+  switch (req.kind) {
+    case "dsa-interview-live":
+      return livePacket(session);
+    case "recruiter-live":
+      return recruiterLive(session);
+    case "behavioral-live":
+      return behavioralLive(session);
+    case "resume-feedback":
+      return resumeFeedbackPacket(session);
+    case "behavioral-rewrite":
+      return rewritePacket(session);
+    default:
+      return gradingFor(session).packet;
+  }
 }
 
 /** Every copy and download is logged (spec §2.5). */
@@ -174,27 +194,51 @@ export function logPacketAction(sessionId: string, kind: PacketKind, action: "co
   addEvent(sessionId, "packet_copied", { kind, action, version: versionTag });
 }
 
-export type PasteResult = { ok: true; scorecard?: ScorecardView } | { ok: false; error: string };
+export type PasteResult = { ok: true; scorecard?: ScorecardView; feedback?: unknown } | { ok: false; error: string };
 
-/** A reply pasted back from the chatbot. Grading replies must end with a valid JSON block. */
+const issues = (e: { issues: { path: PropertyKey[]; message: string }[] }) => e.issues.slice(0, 5).map((i) => `${i.path.map(String).join(".") || "(root)"}: ${i.message}`).join("; ");
+
+/** A reply pasted back from the chatbot. Grading and feedback replies must end with a valid JSON block. */
 export function pasteReply(sessionId: string, kind: PacketKind, text: string): PasteResult {
   const session = getSession(sessionId);
   if (!session) throw new ApiError(404, "Unknown session.");
   if (!text.trim()) throw new ApiError(400, "Paste the reply first.");
+  requireRound(session, kind);
 
-  if (kind === "dsa-grading") {
-    const packet = gradingPacket(session); // also enforces "after the round"
+  if (GRADING_KINDS[kind]) {
+    const { packet, rubric } = gradingFor(session); // also enforces "after the round"
     const block = extractJsonBlock(text);
     let error: string | null = null;
     if (!block.ok) error = block.error;
     else {
       const parsed = aiGradeSchema.safeParse(block.value);
-      if (!parsed.success) error = parsed.error.issues.slice(0, 5).map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ");
+      if (!parsed.success) error = issues(parsed.error);
       else {
-        error = checkGradeAgainstRubric(parsed.data, DSA_INTERVIEW_RUBRIC);
+        error = checkGradeAgainstRubric(parsed.data, rubric);
         if (!error) {
           addEvent(sessionId, "reply_pasted", { kind, ok: true, text });
           return { ok: true, scorecard: saveAiGrade(sessionId, parsed.data, "pasted", packet.versionTag) };
+        }
+      }
+    }
+    addEvent(sessionId, "reply_pasted", { kind, ok: false, text, error });
+    return { ok: false, error: error! };
+  }
+
+  if (isFeedbackKind(kind)) {
+    const s = settleInterview(sessionId).session;
+    if (s.status === "active") throw new ApiError(409, "This is available after the interview ends.");
+    const block = extractJsonBlock(text);
+    let error: string | null = null;
+    if (!block.ok) error = block.error;
+    else {
+      const parsed = FEEDBACK_SCHEMAS[kind].safeParse(block.value);
+      if (!parsed.success) error = issues(parsed.error);
+      else {
+        error = checkFeedback(kind, s, parsed.data);
+        if (!error) {
+          addEvent(sessionId, "reply_pasted", { kind, ok: true, via: "pasted", text, result: parsed.data });
+          return { ok: true, feedback: parsed.data };
         }
       }
     }
@@ -209,28 +253,62 @@ export function pasteReply(sessionId: string, kind: PacketKind, text: string): P
 
 // ---- connected ----------------------------------------------------------------------------------------
 
+const GRADER_SYSTEM: Record<string, string> = {
+  dsa: "You grade mock coding interviews for a hiring committee. Follow the instructions in the user's message exactly.",
+  recruiter: "You grade mock recruiter screens for a hiring committee. Follow the instructions in the user's message exactly.",
+  behavioral: "You grade mock behavioral interviews for a hiring committee. Follow the instructions in the user's message exactly.",
+};
+
 export async function gradeWithAi(sessionId: string): Promise<ScorecardView> {
   const session = getSession(sessionId);
   if (!session) throw new ApiError(404, "Unknown session.");
-  const packet = gradingPacket(session);
+  const { packet, rubric } = gradingFor(session);
   const resolved = resolveAi();
   const { value } = await completeJson(
     {
       role: "grader",
       purpose: "grader",
       sessionId,
-      system: "You grade mock coding interviews for a hiring committee. Follow the instructions in the user's message exactly.",
+      system: GRADER_SYSTEM[session.roundType] ?? GRADER_SYSTEM.dsa!,
       messages: [{ role: "user", content: packet.markdown }],
       maxTokens: 8000,
       temperature: 0,
       effort: "medium",
     },
     aiGradeSchema,
-    (g) => checkGradeAgainstRubric(g, DSA_INTERVIEW_RUBRIC),
+    (g) => checkGradeAgainstRubric(g, rubric),
   );
-  addEvent(sessionId, "reply_pasted", { kind: "dsa-grading", ok: true, via: "ai", model: resolved.models.grader });
+  addEvent(sessionId, "reply_pasted", { kind: packet.kind, ok: true, via: "ai", model: resolved.models.grader });
   return saveAiGrade(sessionId, value, resolved.models.grader || resolved.provider, packet.versionTag);
 }
+
+/** Resume feedback (recruiter) or stronger answer versions (behavioral), from the connected model. */
+export async function feedbackWithAi(sessionId: string, kind: FeedbackKind): Promise<unknown> {
+  const session = getSession(sessionId);
+  if (!session) throw new ApiError(404, "Unknown session.");
+  requireRound(session, kind);
+  const packet = renderPacket({ kind, sessionId });
+  const resolved = resolveAi();
+  const s = settleInterview(sessionId).session;
+  const { value } = await completeJson(
+    {
+      role: "grader",
+      purpose: "feedback",
+      sessionId,
+      system: "You are a careful career coach. Never invent facts about the candidate. Follow the instructions in the user's message exactly.",
+      messages: [{ role: "user", content: packet.markdown }],
+      maxTokens: 8000,
+      temperature: 0.2,
+      effort: "medium",
+    },
+    FEEDBACK_SCHEMAS[kind],
+    (v) => checkFeedback(kind, s, v),
+  );
+  addEvent(sessionId, "reply_pasted", { kind, ok: true, via: "ai", model: resolved.models.grader, result: value });
+  return value;
+}
+
+export { storedFeedback };
 
 const APPROACH_SAFE = "Doesn't work as a request: I can only judge an approach, not write or reveal one. Describe your plan in words.";
 

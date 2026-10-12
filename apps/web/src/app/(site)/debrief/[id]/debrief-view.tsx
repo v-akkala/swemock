@@ -10,6 +10,7 @@ import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { DebriefData } from "@/server/debrief";
 import type { ScorecardView } from "@/server/scoring/scorecard";
+import { BehavioralExtras, RecruiterExtras } from "./conversation-debrief";
 
 const SOURCE_STYLE = {
   auto: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
@@ -60,10 +61,10 @@ export function DebriefView({ data }: { data: DebriefData }) {
               </>
             ) : (
               <PacketPanel
-                kind="dsa-grading"
+                kind={`${data.roundType}-grading` as "dsa-grading" | "recruiter-grading" | "behavioral-grading"}
                 sessionId={data.session.id}
                 title="Grade with any chatbot"
-                description="Copy this grading packet (rubric, transcript, code, and events) into claude.ai or another assistant, then paste its whole reply here."
+                description="Copy this grading packet (rubric, transcript, and events) into claude.ai or another assistant, then paste its whole reply here."
                 expectsJson
                 onPasted={(result) => {
                   const scorecard = (result as { scorecard?: ScorecardView }).scorecard;
@@ -75,7 +76,10 @@ export function DebriefView({ data }: { data: DebriefData }) {
         </section>
       )}
 
-      {data.frames.length > 0 && <Replay frames={data.frames} />}
+      {data.recruiter && <RecruiterExtras sessionId={data.session.id} data={data.recruiter} aiConnected={data.aiConnected} />}
+      {data.behavioral && <BehavioralExtras sessionId={data.session.id} data={data.behavioral} aiConnected={data.aiConnected} />}
+
+      {data.frames.length > 0 && <Replay frames={data.frames} withCode={data.roundType === "dsa"} />}
 
       {data.reveal && (
         <section aria-labelledby="reveal-heading" className="space-y-4">
@@ -125,7 +129,6 @@ export function DebriefView({ data }: { data: DebriefData }) {
 }
 
 function Scorecard({ card }: { card: ScorecardView }) {
-  const m = card.metrics;
   return (
     <section aria-labelledby="scorecard-heading" className="space-y-4" data-testid="scorecard">
       <div className="flex flex-wrap items-baseline gap-4">
@@ -152,12 +155,9 @@ function Scorecard({ card }: { card: ScorecardView }) {
         </span>
       </div>
       <ul className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3" data-testid="metrics">
-        <li>Best submission: {m.bestTotal ? `${m.bestPassed}/${m.bestTotal} tests` : "none"}</li>
-        <li>{m.accepted ? `Accepted after ${m.minutesToAccept} min` : "Not accepted"}</li>
-        <li>Submissions: {m.submissions}</li>
-        <li>Runs before the first submit: {m.runsBeforeFirstSubmit}</li>
-        <li>Runs with your own input: {m.customRunsBeforeAccept}</li>
-        <li>Hints and nudges: {m.hintsUsed}</li>
+        {card.metricLines.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
       </ul>
       <table className="w-full text-left text-sm">
         <thead className="text-muted-foreground text-xs">
@@ -258,7 +258,7 @@ function SelfChecklist({ sessionId, card, onSaved }: { sessionId: string; card: 
   );
 }
 
-function Replay({ frames }: { frames: DebriefData["frames"] }) {
+function Replay({ frames, withCode }: { frames: DebriefData["frames"]; withCode: boolean }) {
   const [index, setIndex] = useState(frames.length - 1);
   const frame = frames[index]!;
   const chat = useMemo(() => frames.slice(0, index + 1).filter((f) => f.kind === "chat"), [frames, index]);
@@ -283,11 +283,11 @@ function Replay({ frames }: { frames: DebriefData["frames"] }) {
         <strong>{frame.label}</strong>
         {frame.detail && frame.kind !== "chat" && <span className="text-muted-foreground"> · {frame.detail}</span>}
       </p>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div>
+      <div className={cn("grid gap-4", withCode && "lg:grid-cols-2")}>
+        {withCode && <div>
           <p className="text-muted-foreground mb-1 text-xs">Code at {mmss(frame.at)}{frame.code ? ` (${frame.code.language})` : ""}</p>
           <pre className="bg-muted h-80 overflow-auto rounded-md p-3 font-mono text-xs">{frame.code?.code ?? "(no code yet)"}</pre>
-        </div>
+        </div>}
         <div>
           <p className="text-muted-foreground mb-1 text-xs">Conversation so far</p>
           <ol className="bg-muted h-80 space-y-2 overflow-auto rounded-md p-3 text-xs">

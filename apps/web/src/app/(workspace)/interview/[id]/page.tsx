@@ -1,6 +1,9 @@
 import { notFound, redirect } from "next/navigation";
 import { CODEGEN, LANGUAGES, LANGUAGE_LABELS } from "@swemock/shared";
+import { ConversationShell } from "@/components/interview/conversation-shell";
+import { getDb } from "@/server/db";
 import { getDsa, getDsaPrivate } from "@/server/content/repo";
+import { readSettings } from "@/server/settings";
 import { getSession, loadDrafts, sessionEvents } from "@/server/dsa/store";
 import { settleInterview } from "@/server/interview/engine";
 import { InterviewShell } from "./interview-shell";
@@ -11,9 +14,24 @@ export const metadata = { title: "Interview · swemock" };
 export default async function InterviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const found = getSession(id);
-  if (!found || found.mode !== "interview" || !found.itemId) notFound();
+  if (!found || found.mode !== "interview") notFound();
+  if (found.roundType === "dsa" && !found.itemId) notFound();
   const { session, state } = settleInterview(id);
   if (session.status !== "active") redirect(`/debrief/${id}`);
+
+  if (session.roundType === "recruiter" || session.roundType === "behavioral") {
+    const round = state.round;
+    return (
+      <ConversationShell
+        sessionId={id}
+        roundType={session.roundType}
+        liveVia={state.liveVia}
+        voiceEnabled={readSettings(getDb()).features.voiceInput}
+        resume={round?.kind === "recruiter" ? { title: round.config.resumeTitle, text: round.config.resumeText, role: round.config.role, company: round.config.company, jobDescription: round.config.jobDescription } : undefined}
+        questionCount={round?.kind === "behavioral" ? round.config.questionIds.length : undefined}
+      />
+    );
+  }
 
   const slug = session.itemId!.split(":")[1]!;
   const { pub } = getDsa(slug)!;
