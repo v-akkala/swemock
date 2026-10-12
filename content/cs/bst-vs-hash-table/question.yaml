@@ -1,0 +1,18 @@
+title: Binary search tree versus hash table
+difficulty: medium
+topics: [data-structures]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  When would you choose a balanced binary search tree over a hash table for a key-value store?
+key_points:
+  - A hash table gives O(1) average lookups but keeps no order; a balanced tree gives O(log n) and keeps keys sorted
+  - Trees support range queries, ordered iteration, and predecessor or successor lookups; hash tables don't
+  - Trees have predictable worst-case time, while hash tables can degrade with collisions and pay for occasional resizes
+  - Hash tables need a good hash function and usually use more memory to keep the load factor low
+  - Choose a hash table for pure point lookups and a tree when order or ranges matter or latency must be predictable
+model_answer: |
+  Use a hash table when you only need fast get and put by key. Use a balanced tree when you need ordering, range scans,
+  or nearest-key queries, or when you want guaranteed O(log n) behavior without resize spikes.
+follow_up: How do databases use this tradeoff in their indexes?

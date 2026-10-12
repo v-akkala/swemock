@@ -1,0 +1,19 @@
+title: Virtual memory and paging
+difficulty: hard
+topics: [os, memory]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Explain virtual memory. How does paging work, what happens on a page fault, and what does the TLB do?
+key_points:
+  - Each process sees its own virtual address space; the OS and hardware (the MMU) map virtual pages to physical frames using page tables
+  - Memory is split into fixed-size pages (commonly 4 KB), which avoids external fragmentation and allows non-contiguous physical placement
+  - A page fault happens when a page isn't mapped or isn't in memory; the OS loads it from disk (or allocates it), updates the page table, and restarts the instruction
+  - The TLB caches recent virtual-to-physical translations so most accesses skip the page table walk; a miss costs a walk through multi-level tables
+  - Benefits are isolation between processes, running programs larger than RAM, shared pages, and copy-on-write; thrashing happens when the working set exceeds RAM
+model_answer: |
+  Virtual memory gives every process a private address space that the MMU translates to physical frames through page
+  tables. A page fault lets the OS bring a page in on demand. The TLB caches translations so the common case is fast,
+  and the cost shows up as thrashing when the working set no longer fits in memory.
+follow_up: What does copy-on-write do during fork?

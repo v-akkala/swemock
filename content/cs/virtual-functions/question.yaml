@@ -1,0 +1,19 @@
+title: Virtual functions and dynamic dispatch
+difficulty: medium
+topics: [cpp, oop]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  How do virtual functions work in C++? Why does a base class with virtual functions need a virtual destructor?
+key_points:
+  - A virtual call is resolved at runtime from the object's dynamic type, typically through a per-class vtable and a pointer stored in each object
+  - Non-virtual calls are bound at compile time based on the static type, which allows inlining and has no lookup cost
+  - Deleting a derived object through a base pointer without a virtual destructor is undefined behavior; the derived destructor may not run
+  - A pure virtual function makes a class abstract, so it defines an interface that derived classes must implement
+  - Use override so the compiler checks you're really overriding, and avoid calling virtual functions from constructors and destructors
+model_answer: |
+  Virtual functions are dispatched through the object's vtable, so the derived implementation runs even when called through
+  a base pointer. Because deleting through a base pointer must run the derived destructor, polymorphic base classes need a
+  virtual destructor.
+follow_up: What does object slicing do, and how do you avoid it?

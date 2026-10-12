@@ -1,0 +1,18 @@
+title: Heaps and priority queues
+difficulty: medium
+topics: [data-structures]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  What is a binary heap, what are the costs of its operations, and where would you use one?
+key_points:
+  - A binary heap is a complete binary tree stored in an array where each parent is no larger (min-heap) or no smaller (max-heap) than its children
+  - Peeking at the min or max is O(1); insert and extract are O(log n) by sifting up or down
+  - Building a heap from n items takes O(n) with the bottom-up method, not O(n log n)
+  - It is a good fit for priority queues, top-k problems, merging sorted streams, and Dijkstra's algorithm
+  - It does not support fast search for arbitrary elements or sorted iteration
+model_answer: |
+  A heap keeps the smallest (or largest) element at the root of an array-backed complete tree. Insert and remove-top are
+  O(log n), peek is O(1), and heapify builds one in O(n). That makes it the standard tool for priority queues and top-k.
+follow_up: How would you find the k largest elements of a stream using a heap?

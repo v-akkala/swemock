@@ -1,0 +1,18 @@
+title: HTTP methods and status codes
+difficulty: easy
+topics: [networking]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Explain the main HTTP methods and what idempotent and safe mean. Which status code families should an API use and when?
+key_points:
+  - GET reads and is safe and idempotent; POST creates or triggers an action and is neither safe nor idempotent
+  - PUT replaces a resource and DELETE removes it; both are idempotent, so repeating them leaves the same state
+  - PATCH makes a partial update and is not guaranteed to be idempotent
+  - Status families are 2xx success, 3xx redirection, 4xx client error, and 5xx server error
+  - Common codes are 200, 201 for created, 204 for no content, 400, 401 versus 403, 404, 409 for conflicts, 429 for rate limits, and 500 or 503
+model_answer: |
+  Safe methods don't change state (GET); idempotent methods give the same result when repeated (GET, PUT, DELETE). APIs
+  answer with 2xx on success, 4xx when the client made a mistake, and 5xx when the server failed.
+follow_up: Why does idempotency matter when a client retries a request?

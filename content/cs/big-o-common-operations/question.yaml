@@ -1,0 +1,18 @@
+title: Big-O of common operations
+difficulty: easy
+topics: [data-structures]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Give the typical time complexity of access, search, insert, and delete for an array, a linked list, a hash map, and a balanced binary search tree.
+key_points:
+  - Array: O(1) access by index, O(n) search, O(n) insert or delete in the middle because elements shift (O(1) amortized at the end)
+  - Linked list: O(n) access and search, O(1) insert or delete once you hold the node
+  - Hash map: O(1) average for search, insert, and delete, with O(n) worst case; no ordering
+  - Balanced BST: O(log n) for search, insert, and delete, and it keeps keys sorted for range queries and ordered iteration
+  - Pick the structure from the operations you need most, not from memorized tables
+model_answer: |
+  Arrays are fast to index but slow to insert in the middle; linked lists are the reverse. Hash maps give O(1) average
+  lookups without ordering; balanced trees give O(log n) with sorted order.
+follow_up: When would you choose a balanced tree over a hash map?

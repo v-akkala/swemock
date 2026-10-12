@@ -1,0 +1,19 @@
+title: Transaction isolation levels
+difficulty: hard
+topics: [databases, concurrency]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Describe the SQL isolation levels and the anomalies each one allows: dirty reads, non-repeatable reads, and phantoms.
+key_points:
+  - Read uncommitted allows dirty reads, where a transaction sees another's uncommitted changes
+  - Read committed prevents dirty reads, but a row can change between two reads in the same transaction (non-repeatable read)
+  - Repeatable read keeps rows you've read stable; a range query can still see new rows (phantoms) in the standard definition, though some databases prevent them with snapshots
+  - Serializable behaves as if transactions ran one at a time, preventing all three anomalies at the cost of locking or aborted retries
+  - Higher isolation lowers concurrency; snapshot isolation avoids many anomalies but still permits write skew
+model_answer: |
+  Isolation levels trade correctness for concurrency. Read committed stops dirty reads, repeatable read also stops
+  non-repeatable reads, and serializable also stops phantoms. Real databases implement them differently, so check what
+  the engine's repeatable read actually guarantees.
+follow_up: What is write skew, and which level prevents it?

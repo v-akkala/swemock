@@ -1,0 +1,19 @@
+title: RAII and smart pointers in C++
+difficulty: medium
+topics: [cpp, memory]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  What is RAII in C++, and how do unique_ptr, shared_ptr, and weak_ptr use it?
+key_points:
+  - RAII ties a resource's lifetime to an object's lifetime: acquire in the constructor, release in the destructor, so cleanup happens even on early return or exceptions
+  - unique_ptr has exclusive ownership, is movable but not copyable, and has essentially no overhead
+  - shared_ptr uses reference counting for shared ownership and frees the object when the last owner goes away; copies cost atomic updates
+  - weak_ptr observes a shared_ptr without owning it, which breaks reference cycles that would otherwise leak
+  - Prefer make_unique and make_shared over raw new and delete, and prefer unique_ptr unless ownership is truly shared
+model_answer: |
+  RAII means resources are owned by objects and released in destructors. unique_ptr is single ownership, shared_ptr is
+  reference-counted shared ownership, and weak_ptr is a non-owning view that avoids cycles. Raw owning pointers should be
+  rare in modern C++.
+follow_up: How can a shared_ptr cycle cause a leak?

@@ -1,0 +1,18 @@
+title: Mutex versus semaphore
+difficulty: medium
+topics: [concurrency, os]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  What is the difference between a mutex and a semaphore? Give a use for each.
+key_points:
+  - A mutex provides mutual exclusion: only the thread that locked it should unlock it
+  - A semaphore holds a counter; wait decrements (blocking at zero) and signal increments, so it can admit N concurrent holders or signal between threads
+  - A binary semaphore looks like a mutex but has no ownership, so any thread can release it
+  - Use a mutex to protect a critical section; use a counting semaphore to limit a pool of resources, such as database connections
+  - Condition variables or semaphores coordinate producers and consumers; misuse of either can cause deadlock
+model_answer: |
+  A mutex is a lock owned by one thread at a time, used to protect shared data. A semaphore is a counter that allows up to
+  N threads through and can also be used for signaling, since a different thread can release it.
+follow_up: How would you build a bounded buffer for a producer and a consumer?
