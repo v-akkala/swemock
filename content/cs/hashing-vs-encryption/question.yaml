@@ -1,0 +1,18 @@
+title: Hashing versus encryption
+difficulty: easy
+topics: [security]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  What is the difference between hashing and encryption? How should passwords be stored?
+key_points:
+  - Encryption is reversible with a key, for data you must read again; hashing is one-way, for verifying data without recovering it
+  - Good hashes are deterministic, collision-resistant, and fast; general-purpose hashes such as SHA-256 are too fast for passwords
+  - Store passwords with a slow, salted password hash such as bcrypt, scrypt, or Argon2, never in plain text or with a fast hash
+  - A unique random salt per password defeats precomputed rainbow tables and hides duplicate passwords
+  - Symmetric encryption uses one shared key; asymmetric uses a key pair, often to exchange a symmetric key
+model_answer: |
+  Encryption can be undone with the key; hashing cannot. Passwords should be hashed with a slow, salted algorithm like
+  Argon2 or bcrypt so stolen databases are costly to crack. Use encryption for data you need to read back.
+follow_up: Why is a slow hash a feature for passwords but a drawback for checksums?

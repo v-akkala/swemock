@@ -1,0 +1,19 @@
+title: Garbage collection
+difficulty: medium
+topics: [memory]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  How does garbage collection work? Compare reference counting with tracing collectors, and say what a memory leak means in a garbage-collected language.
+key_points:
+  - Reference counting frees an object when its count reaches zero, which is immediate and predictable but can't free cycles without extra work
+  - Tracing collectors find everything reachable from roots (stacks, globals) and reclaim the rest; mark-and-sweep and copying are common variants
+  - Generational collectors exploit that most objects die young, collecting the young generation often and the old one rarely
+  - Collection can cause pauses, so runtimes use incremental, concurrent, or low-pause designs
+  - A leak in a managed language is memory that is still reachable but no longer needed, such as items left in a static cache or listener list
+model_answer: |
+  Reference counting reclaims objects as soon as nothing refers to them but struggles with cycles. Tracing collectors
+  reclaim whatever is unreachable from the roots, usually split by generation. A "leak" in a managed language is a
+  forgotten reference that keeps objects reachable.
+follow_up: How would you find a leak in a long-running service?

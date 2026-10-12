@@ -1,0 +1,18 @@
+title: Generators and decorators in Python
+difficulty: medium
+topics: [python]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  What is a generator in Python, and why use one? What is a decorator?
+key_points:
+  - A function containing yield returns a generator that produces values lazily, pausing and resuming its state between calls
+  - Generators use constant memory for large or infinite sequences and can be chained into pipelines
+  - A generator can be consumed only once; materialize it with list() if you need to reuse the values
+  - A decorator is a callable that takes a function and returns a replacement, applied with @name syntax
+  - Decorators add behavior such as logging, caching (functools.lru_cache), or authorization; use functools.wraps to preserve the wrapped function's metadata
+model_answer: |
+  A generator yields values one at a time and keeps its local state between yields, so it processes data lazily in
+  constant memory. A decorator wraps a function to add behavior without changing its code, usually with functools.wraps.
+follow_up: How does `yield from` differ from looping and yielding?

@@ -1,0 +1,19 @@
+title: The CAP theorem
+difficulty: hard
+topics: [databases, systems]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Explain the CAP theorem. What does it actually say about distributed databases, and how should you use it when choosing a system?
+key_points:
+  - The theorem says that during a network partition, a distributed system must choose between consistency (every read sees the latest write) and availability (every request gets a non-error response)
+  - Partitions can't be avoided in real networks, so the practical choice is CP or AP behavior during a partition, not "pick two of three" in general
+  - CP systems may reject or delay requests on the minority side to stay consistent; AP systems keep serving and reconcile conflicts later, with eventual consistency
+  - Without a partition, systems still trade latency against consistency (the PACELC extension)
+  - Pick per use case: payments and inventory lean toward consistency; feeds and carts can often tolerate eventual consistency
+model_answer: |
+  CAP says that when the network partitions, you must give up either consistency or availability. Since partitions happen,
+  the real question is what the system does during one. CP systems refuse some requests to stay correct; AP systems keep
+  answering and fix divergence afterwards.
+follow_up: How do quorum reads and writes let you tune this tradeoff?

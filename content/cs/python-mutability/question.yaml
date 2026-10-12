@@ -1,0 +1,18 @@
+title: Mutability and references in Python
+difficulty: easy
+topics: [python]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Which Python types are mutable and which are immutable? What bug does a mutable default argument cause?
+key_points:
+  - Lists, dicts, sets, and most user-defined objects are mutable; ints, floats, strings, tuples, and frozensets are immutable
+  - Variables are names bound to objects, so assigning one name to another shares the same object and mutations are visible through both
+  - A default argument is evaluated once when the function is defined, so a mutable default such as an empty list is shared across calls
+  - The usual fix is to default to None and create the list inside the function
+  - Copy with list(x), copy.copy, or copy.deepcopy depending on whether nested objects must be independent
+model_answer: |
+  Python names refer to objects, and mutable objects change in place for everyone who holds them. A mutable default
+  argument is created once, so state leaks between calls; use None as the default and build a fresh object inside.
+follow_up: What is the difference between a shallow and a deep copy?

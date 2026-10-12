@@ -1,0 +1,19 @@
+title: Caching strategies
+difficulty: medium
+topics: [systems]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  How do you use a cache in front of a database? Cover read and write strategies, eviction, and invalidation.
+key_points:
+  - Cache-aside: the app checks the cache, loads from the database on a miss, then fills the cache; simple and the most common
+  - Write-through writes to the cache and database together; write-back writes to the cache first and flushes later, which is faster but risks losing data
+  - Eviction policies such as LRU or LFU decide what to drop when the cache is full; a TTL bounds staleness
+  - Invalidation is hard: delete or update entries on writes, and accept short staleness or version the keys
+  - Watch for stampedes when a hot key expires; use request coalescing, jittered TTLs, or refresh-ahead
+model_answer: |
+  With cache-aside the application reads from the cache and falls back to the database, then populates the cache. Writes
+  either invalidate or update the entry. Eviction and TTLs bound memory and staleness, and hot-key expiry needs care to
+  avoid a stampede on the database.
+follow_up: How would you keep a cache consistent with the database when multiple services write?

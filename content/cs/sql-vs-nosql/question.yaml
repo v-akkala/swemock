@@ -1,0 +1,18 @@
+title: SQL versus NoSQL
+difficulty: easy
+topics: [databases]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  How do you decide between a relational (SQL) database and a NoSQL store?
+key_points:
+  - Relational databases use fixed schemas, joins, and strong transactional guarantees, which suit structured data with relationships
+  - NoSQL covers several models: key-value, document, wide-column, and graph, each optimized for particular access patterns
+  - Many NoSQL systems scale horizontally more easily and allow flexible schemas, often trading away joins or strong consistency
+  - Choose from the access patterns, consistency needs, and scale, not from fashion
+  - Relational is a safe default; a mixed design (SQL for core data plus a cache or search index) is common
+model_answer: |
+  SQL databases are strong when data is relational and correctness matters. NoSQL systems fit specific shapes or scale
+  needs, such as documents, huge key-value workloads, or graphs. Start from the queries and consistency you need.
+follow_up: What would push you from a single SQL database toward sharding or a NoSQL store?

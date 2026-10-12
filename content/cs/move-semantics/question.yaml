@@ -1,0 +1,19 @@
+title: Move semantics in C++
+difficulty: hard
+topics: [cpp, memory]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  What problem do move semantics solve in C++? Explain rvalue references, std::move, and the rule of five.
+key_points:
+  - Copying a resource-owning object can be expensive; moving transfers ownership of the resource and leaves the source in a valid but unspecified state
+  - An rvalue reference (T&&) binds to temporaries and lets a constructor or assignment operator steal their resources
+  - std::move doesn't move anything by itself; it casts an object to an rvalue so overload resolution picks the move operation
+  - The rule of five says that if you define a destructor, copy constructor, copy assignment, move constructor, or move assignment, consider defining all five (or delete them)
+  - Mark move operations noexcept so containers such as vector use them when growing; return local objects by value and rely on copy elision instead of std::move
+model_answer: |
+  Moves let a temporary's resources be taken instead of duplicated. T&& binds to rvalues, std::move is just a cast that
+  enables the move overload, and the rule of five keeps the special member functions consistent. Moved-from objects must
+  still be safe to destroy and assign to.
+follow_up: Why can returning `std::move(local)` hurt performance?

@@ -1,0 +1,18 @@
+title: SQL injection and XSS
+difficulty: easy
+topics: [security]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  What are SQL injection and cross-site scripting (XSS)? How do you prevent each?
+key_points:
+  - SQL injection happens when untrusted input is concatenated into a query, so the input can change the query's structure
+  - Prevent it with parameterized queries or prepared statements, not string building or hand-written escaping, plus least-privilege database accounts
+  - XSS happens when untrusted input is rendered as HTML or script in another user's browser, letting an attacker run code as that user
+  - Prevent it by escaping output for its context, using frameworks that escape by default, and adding a Content-Security-Policy
+  - Validate input as defense in depth, but rely on parameterization and output encoding
+model_answer: |
+  Both come from mixing untrusted data with code: SQL for injection and HTML or JavaScript for XSS. Keep data and code
+  separate: parameterized queries for the database, context-aware escaping for the browser, and a CSP as an extra layer.
+follow_up: What's the difference between stored and reflected XSS?

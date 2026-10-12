@@ -1,0 +1,20 @@
+title: The SOLID principles
+difficulty: medium
+topics: [oop]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Name the SOLID principles and give a concrete example of applying one of them.
+key_points:
+  - Single responsibility means a class should have one reason to change
+  - Open/closed means code is open for extension but closed for modification, typically through interfaces and polymorphism
+  - Liskov substitution means subtypes must be usable wherever the base type is expected without breaking correctness
+  - Interface segregation means prefer small, focused interfaces over one large one that forces unused methods
+  - Dependency inversion means high-level code depends on abstractions, not concrete classes, which makes substitution and testing easy
+  - A good example names a real design: inject a Notifier interface instead of hard-coding an email client
+model_answer: |
+  SOLID is single responsibility, open/closed, Liskov substitution, interface segregation, and dependency inversion. They
+  are guidelines for keeping code easy to change and test, for example by depending on a small interface that tests can
+  replace with a fake.
+follow_up: When can following these principles too literally make code worse?
