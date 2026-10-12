@@ -988,3 +988,5 @@ Keep `docker compose up` working from M0 onward.
 
 
 Please make it really easy to add more problems to the problem bank because that is an update that is going to happen frequently
+
+Update spec.md §6.3 v1.0 targets: CS fundamentals 60, behavioral 40, ML fundamentals 80, LLD 12, review PRs 8, comprehension codebases 6, feature-extension repos 4. Larger targets move to later releases.
