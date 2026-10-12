@@ -1,0 +1,19 @@
+title: Process versus thread
+difficulty: easy
+topics: [os]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  What is the difference between a process and a thread? When would you pick one over the other?
+key_points:
+  - A process has its own address space and resources; threads inside a process share its memory and file descriptors
+  - Threads are cheaper to create and to switch between, and can communicate through shared memory
+  - Shared memory means threads need synchronization; a bug in one thread can corrupt or crash the whole process
+  - Processes give isolation (a crash stays contained) at the cost of heavier creation and explicit IPC such as pipes or sockets
+  - Choose threads for tightly coupled work that shares data; choose processes for isolation, security boundaries, or to use multiple cores in runtimes with a global lock
+model_answer: |
+  A process is an isolated program instance with its own virtual address space; threads are units of execution inside a
+  process that share that address space. Threads are lighter and share data easily but need locks; processes are heavier
+  but isolated, so a crash or a memory bug in one doesn't take the others down.
+follow_up: What state is private to each thread even though they share the address space?

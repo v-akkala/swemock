@@ -1,0 +1,18 @@
+title: Cost of a hash map lookup
+difficulty: easy
+topics: [data-structures]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  What is the time complexity of looking up a key in a hash map, and in what situations does it get worse?
+key_points:
+  - Average case O(1): hash the key, go straight to a bucket, compare a handful of entries
+  - Worst case O(n) when many keys collide in one bucket, for example with a poor hash function or adversarial input
+  - A load factor limit with resizing keeps buckets short, so inserts are amortized O(1) even though a resize costs O(n)
+  - Collisions are handled by chaining or open addressing; both degrade as the table fills
+model_answer: |
+  Lookups are O(1) on average because the hash function maps the key to a bucket directly and buckets stay short
+  while the load factor is bounded. If many keys land in the same bucket the lookup degrades to O(n), which is why
+  good hash functions, resizing, and (in some languages) tree-shaped buckets matter.
+follow_up: How would you handle two different keys that hash to the same bucket?

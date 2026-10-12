@@ -1,0 +1,19 @@
+title: TCP versus UDP
+difficulty: easy
+topics: [networking]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Compare TCP and UDP. Which would you use for a video call, and which for a file download, and why?
+key_points:
+  - TCP is connection-oriented and reliable; it provides ordering, retransmission, flow control, and congestion control
+  - UDP is connectionless with no delivery or ordering guarantee and very little overhead
+  - TCP sets up a connection with a three-way handshake before data flows
+  - Real-time media tolerates loss better than delay, so calls favor UDP (often with application-level handling); file downloads need every byte, so they use TCP
+  - Head-of-line blocking in TCP can add latency when one packet is lost, which is a reason newer protocols build on UDP
+model_answer: |
+  TCP gives a reliable, ordered byte stream at the cost of handshakes and retransmission delays. UDP just sends datagrams,
+  so it's faster and simpler but unreliable. A file download should use TCP; a live call usually uses UDP because a late
+  packet is worse than a lost one.
+follow_up: What do QUIC and HTTP/3 change about this tradeoff?

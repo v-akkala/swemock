@@ -1,0 +1,19 @@
+title: How a database index works
+difficulty: medium
+topics: [databases]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  What is a database index, how does it speed up queries, and what does it cost?
+key_points:
+  - An index is a separate sorted structure (commonly a B-tree) mapping column values to row locations
+  - It turns a full table scan into a logarithmic lookup and supports range queries and ordering
+  - Writes get slower and storage grows, because every insert, update, or delete must also maintain the index
+  - A composite index only helps queries that use its leftmost columns, so column order matters
+  - Low-selectivity columns (for example a boolean) rarely benefit; check with the query plan
+model_answer: |
+  An index keeps a sorted copy of one or more columns with pointers to the rows, usually as a B-tree, so a lookup or range
+  scan touches a few pages instead of the whole table. The price is extra storage and slower writes, so index the columns
+  your queries actually filter and sort on.
+follow_up: Why might the database ignore an index you created?

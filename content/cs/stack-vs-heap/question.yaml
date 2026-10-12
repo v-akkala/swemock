@@ -1,0 +1,18 @@
+title: Stack versus heap memory
+difficulty: easy
+topics: [memory]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  What is the difference between stack and heap memory? What can go wrong with each?
+key_points:
+  - The stack holds call frames and local variables; allocation and release are automatic and very fast, following function entry and exit
+  - The heap holds dynamically allocated objects whose lifetime isn't tied to a function call; allocation is slower and must be managed
+  - Stack problems are overflow (deep or unbounded recursion, huge locals) and dangling references to a frame that has returned
+  - Heap problems are leaks, use-after-free, double free, and fragmentation in manual-memory languages; garbage-collected languages trade these for GC pauses
+  - Each thread has its own stack, while the heap is shared
+model_answer: |
+  The stack is a fast, automatically managed region for function frames and locals; the heap is for objects that must outlive
+  the call that created them. Stacks overflow and can leave dangling references; heaps leak, fragment, or are freed too early.
+follow_up: In C++ or Python, where does a local variable's data actually live?

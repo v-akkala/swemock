@@ -1,0 +1,19 @@
+title: What happens when you type a URL
+difficulty: medium
+topics: [networking]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  Walk me through what happens between typing a URL into a browser and seeing the page.
+key_points:
+  - The browser parses the URL and checks its caches (HSTS, DNS, HTTP cache) before using the network
+  - DNS resolution turns the hostname into an IP address, going through the OS resolver, a recursive resolver, and authoritative servers if needed
+  - A TCP connection is opened (three-way handshake), then a TLS handshake negotiates keys and verifies the server certificate
+  - The browser sends an HTTP request; the server (often behind a load balancer or CDN) returns a response
+  - The browser parses HTML, builds the DOM, fetches CSS, JavaScript, and images (possibly reusing the connection), and renders the page
+model_answer: |
+  The browser resolves the hostname through DNS, opens a TCP connection and negotiates TLS, sends an HTTP request, and
+  receives HTML. It then builds the DOM, fetches the subresources it references, and paints the page, reusing cached
+  data and connections wherever it can.
+follow_up: Where could a CDN or a cache short-circuit part of that path?

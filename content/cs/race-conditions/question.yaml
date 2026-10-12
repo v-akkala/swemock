@@ -1,0 +1,19 @@
+title: What a race condition is
+difficulty: easy
+topics: [concurrency]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  What is a race condition? Give an example and explain how you would fix it.
+key_points:
+  - The result depends on the timing or interleaving of operations on shared state that isn't properly synchronized
+  - Classic example is a counter incremented by two threads: read, add, and write are separate steps, so updates get lost
+  - Fix with a mutex around the critical section, or an atomic operation for simple cases
+  - Other fixes are avoiding shared mutable state (immutability, message passing, thread-confined data)
+  - Races are hard to reproduce because they depend on scheduling; tools such as thread sanitizers help find them
+model_answer: |
+  A race condition happens when two threads touch the same data without coordination and at least one writes, so the
+  outcome depends on scheduling. Incrementing a shared counter is the textbook case. Protect the shared state with a lock
+  or an atomic, or better, avoid sharing it.
+follow_up: When is an atomic variable enough, and when do you need a lock?

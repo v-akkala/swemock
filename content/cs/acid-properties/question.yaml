@@ -1,0 +1,19 @@
+title: The ACID properties
+difficulty: easy
+topics: [databases]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  What does ACID stand for, and why does it matter for something like a bank transfer?
+key_points:
+  - Atomicity means a transaction happens entirely or not at all
+  - Consistency means a transaction takes the database from one valid state to another, respecting constraints
+  - Isolation means concurrent transactions don't see each other's partial work
+  - Durability means once a transaction commits, it survives crashes (typically through a write-ahead log)
+  - In a transfer, the debit and credit must both happen or neither, and money must not vanish or duplicate under concurrency
+model_answer: |
+  Atomicity, consistency, isolation, and durability together make a transaction safe. For a transfer it means the debit
+  and credit are one unit, constraints hold, other transactions don't see a half-finished transfer, and a committed
+  transfer isn't lost in a crash.
+follow_up: What is the tradeoff between strict isolation and throughput?

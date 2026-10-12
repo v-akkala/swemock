@@ -1,0 +1,19 @@
+title: Inheritance versus composition
+difficulty: medium
+topics: [oop]
+source: authored
+reviewed: false
+version: 1
+prompt: |
+  When would you use inheritance and when composition? Why do people say to favor composition?
+key_points:
+  - Inheritance models an "is-a" relationship and lets subclasses reuse and override behavior through a shared interface
+  - Composition models "has-a": an object delegates to other objects it holds, so behavior can be swapped without changing the class hierarchy
+  - Inheritance couples a subclass tightly to its parent's implementation, so changes in the base class can break subclasses (the fragile base class problem)
+  - Composition gives flexibility at runtime and easier testing through substitution of the parts
+  - Use inheritance for genuine subtype relationships that honor the Liskov substitution principle; prefer composition for reuse
+model_answer: |
+  Inheritance is for true subtype relationships where a subclass can stand in anywhere the parent is expected. Composition
+  assembles behavior from parts the object holds and delegates to. Composition is favored for reuse because it avoids the
+  tight coupling and brittle hierarchies that deep inheritance creates.
+follow_up: Can you give an example where a subclass breaks the Liskov substitution principle?
