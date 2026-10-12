@@ -1,0 +1,25 @@
+title: Merge Overlapping Ranges
+difficulty: medium
+tags: [intervals, greedy]
+companies: []
+source: authored
+reviewed: false
+version: 1
+signature:
+  kind: function
+  name: mergeRanges
+  params:
+    - { name: ranges, type: "int[][]" }
+  returns: "int[][]"
+checker: { type: exact }
+limits: { time_ms: 2000, memory_mb: 256 }
+tle_guard: true
+hints:
+  - "Comparing every pair of ranges works but is slow. If the ranges were arranged in a helpful order, which ones would you need to compare?"
+  - "Sort the ranges by start. After sorting, a range can only overlap the ones immediately before it, so you only need to compare it with the merged range you are currently building."
+  - "Sweep through the sorted ranges, keeping the current merged range. If the next range starts at or before the current end, extend the end (to the larger of the two ends). Otherwise, emit the current range and start a new one."
+  - "ranges.sort(); out = [ranges[0]]; for (s, e) in ranges[1:]: if s <= out[-1].end: out[-1].end = max(out[-1].end, e) else: out.append([s, e]); return out."
+followups:
+  - "Ranges are inserted one at a time and you must keep the merged set up to date. What data structure gives O(log n) per insertion?"
+  - "Instead of merging, return the total length covered by the union. Do you need to build the merged ranges at all?"
+  - "How would you find the gaps, the stretches not covered by any range?"

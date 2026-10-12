@@ -1,0 +1,27 @@
+title: Course Schedule Order
+difficulty: medium
+tags: [graphs, topological-sort]
+companies: []
+source: authored
+reviewed: false
+version: 1
+signature:
+  kind: function
+  name: courseOrder
+  params:
+    - { name: n, type: int }
+    - { name: prerequisites, type: "int[][]" }
+  returns: "int[]"
+# Many valid orders exist, so a custom checker validates the order instead of comparing to one answer.
+checker: { type: custom, file: checker.py }
+limits: { time_ms: 2000, memory_mb: 256 }
+tle_guard: false
+hints:
+  - "Which courses could you take first? What do they have in common?"
+  - "A course with no unmet prerequisites can be taken right now. Taking it may unlock other courses."
+  - "Count, for every course, how many prerequisites are still unmet. Start with all courses whose count is zero, and each time you take a course, decrease the counts of the courses that depend on it."
+  - "Build adjacency lists b -> a for each pair [a, b] and an indegree array. queue = courses with indegree 0; while queue: take c, append to the order, decrement indegree of each dependent, enqueue those that reach 0. If the order has fewer than n courses there is a cycle: return []."
+followups:
+  - "How would you detect and report one concrete cycle instead of just returning an empty list?"
+  - "Return the order that finishes everything in the fewest semesters when you can take any number of available courses at once."
+  - "If several orders are valid, how do you produce the lexicographically smallest one, and what does it cost?"

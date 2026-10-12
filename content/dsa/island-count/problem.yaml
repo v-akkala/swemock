@@ -1,0 +1,25 @@
+title: Count the Islands
+difficulty: medium
+tags: [graphs]
+companies: []
+source: authored
+reviewed: false
+version: 1
+signature:
+  kind: function
+  name: countIslands
+  params:
+    - { name: grid, type: "char[][]" }
+  returns: int
+checker: { type: exact }
+limits: { time_ms: 2000, memory_mb: 256 }
+tle_guard: false
+hints:
+  - "If you stand on one land cell, which other land cells belong to the same island?"
+  - "All land cells reachable by moving up, down, left or right through land. Exploring from one cell visits exactly one island."
+  - "Scan every cell. When you find unvisited land, count a new island and explore its whole extent (BFS or DFS), marking cells visited so they are never counted again."
+  - "for each cell (r, c): if grid[r][c] is land and unvisited: islands += 1; push (r, c) on a stack; while the stack is not empty: pop a cell, mark it visited, and push its unvisited land neighbors (4 directions)."
+followups:
+  - "Cells are now being turned into land one at a time and after each change you must report the island count. Which data structure fits?"
+  - "Diagonal neighbors now count as connected. What changes in your code?"
+  - "The grid is too large to hold in memory. How could you count islands by streaming over it row by row?"

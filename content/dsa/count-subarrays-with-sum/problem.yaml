@@ -1,0 +1,26 @@
+title: Subarrays With Given Sum
+difficulty: medium
+tags: [prefix-sums, arrays-hashing]
+companies: []
+source: authored
+reviewed: false
+version: 1
+signature:
+  kind: function
+  name: countSubarrays
+  params:
+    - { name: nums, type: "int[]" }
+    - { name: k, type: long }
+  returns: long
+checker: { type: exact }
+limits: { time_ms: 2000, memory_mb: 256 }
+tle_guard: true
+hints:
+  - "The sum of a subarray is the difference of two prefix sums. How could you express 'subarray (i, j] sums to k' using only prefix sums?"
+  - "Let P[j] be the sum of the first j elements. The subarray from i+1 to j has sum P[j] - P[i], so it equals k exactly when P[i] = P[j] - k."
+  - "Sweep j from left to right, keeping a hash map of how many times each prefix sum has appeared so far (including the empty prefix, with value 0). At each j, add the number of earlier prefixes equal to P[j] - k."
+  - "counts = {0: 1}; prefix = 0; total = 0; for x in nums: prefix += x; total += counts.get(prefix - k, 0); counts[prefix] = counts.get(prefix, 0) + 1; return total."
+followups:
+  - "The array contains only non-negative numbers. Can you find a solution that uses O(1) extra space? What does the sliding window need to be true?"
+  - "How would you return the longest subarray with sum k instead of counting them?"
+  - "What if you also had to support point updates between queries? Which structure replaces the plain prefix sums?"

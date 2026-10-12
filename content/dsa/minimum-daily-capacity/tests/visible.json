@@ -1,0 +1,5 @@
+[
+  { "input": { "weights": [4, 2, 7, 1, 3, 9], "days": 3 }, "expected": 11 },
+  { "input": { "weights": [5, 5, 5], "days": 3 }, "expected": 5 },
+  { "input": { "weights": [8, 1, 1], "days": 1 }, "expected": 10 }
+]

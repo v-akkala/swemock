@@ -1,0 +1,26 @@
+title: Minimum Daily Capacity
+difficulty: medium
+tags: [binary-search, greedy]
+companies: []
+source: authored
+reviewed: false
+version: 1
+signature:
+  kind: function
+  name: minCapacity
+  params:
+    - { name: weights, type: "int[]" }
+    - { name: days, type: int }
+  returns: int
+checker: { type: exact }
+limits: { time_ms: 2000, memory_mb: 256 }
+tle_guard: true
+hints:
+  - "Instead of asking how to split the packages, ask: given a candidate capacity, can everything be shipped in the allowed number of days?"
+  - "That yes/no question is easy to answer greedily, and it is monotone: if capacity C works then any larger capacity works too. A monotone yes/no question over a range of numbers is what binary search needs."
+  - "The answer lies between the heaviest single package (nothing smaller can carry it) and the total weight (everything in one day). Binary search that range, testing each candidate with a greedy pass."
+  - "feasible(C): day = 1; load = 0; for w in weights: if load + w > C: day += 1; load = 0; load += w; return day <= days. Then lo = max(weights), hi = sum(weights); while lo < hi: mid = (lo + hi) // 2; if feasible(mid): hi = mid else: lo = mid + 1; return lo."
+followups:
+  - "Why is the greedy check correct? Could packing the first day less full ever help?"
+  - "Packages may now be shipped in any order. Does binary search still apply? What becomes hard?"
+  - "How many feasibility checks does your solution make, and how does that depend on the weights and not just on n?"
