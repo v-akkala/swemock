@@ -30,7 +30,7 @@ services:
       - dev-node-modules:/repo/node_modules
       - dev-web-node-modules:/repo/apps/web/node_modules
       - dev-shared-node-modules:/repo/packages/shared/node_modules
-      - dev-runner-node-modules:/repo/services/runner/node_modules
+      - dev-content-node-modules:/repo/packages/content/node_modules
       - dev-next:/repo/apps/web/.next
       - swemock-dev-data:/data
       - runner-secret:/run/swemock:ro
@@ -40,6 +40,7 @@ services:
     environment:
       WATCHPACK_POLLING: "true"
       SWEMOCK_RUNNER_URL: http://runner:8787
+      SWEMOCK_CONTENT_DIR: /repo/content
 
 networks:
   internal:
@@ -49,7 +50,7 @@ volumes:
   dev-node-modules:
   dev-web-node-modules:
   dev-shared-node-modules:
-  dev-runner-node-modules:
+  dev-content-node-modules:
   dev-next:
   swemock-dev-data:
   runner-secret:

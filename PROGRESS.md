@@ -23,20 +23,28 @@
   - SECURITY.md written; DECISIONS.md M1 section.
   - Scope change mid-M1: Python and C++ only. Java and Node/TypeScript work that had been started (sandbox images `images/sandbox-java` and `images/sandbox-node`, a Java JSON/driver runtime, a TypeScript driver and transpiler, Java/TS stub and driver codegen) was removed before being committed; spec/PLAN/DECISIONS updated.
 
-## In progress
-- Nothing. Waiting for the user to test M1.
+- **M2 — DSA practice (no AI)**
+  - **Content system:** `packages/content` (problem.yaml schema, loader, public/private split, hashing); `scripts/` with `pnpm content:new | gen | validate` (scaffold is a tiny working example; validation covers schema, tests vs signature, both references over all tests, brute-force TLE guard, generator reproducibility, stub compilation, statement/editorial sections). Judge additions: `captureFull`, `collect`.
+  - **15 problems** (4 easy / 8 medium / 3 hard) in `content/dsa/`, all with Python + C++ references, seeded generators (15–30 hidden tests each), hints, editorials, follow-ups; includes a custom checker (`course-order`) and two design-class problems. Committed in three validated batches.
+  - **App:** content sync into SQLite (live pickup, soft delete, review reset), problem browser (tag/difficulty/status/company/search filters, constrained random picker, progress), problem workspace (statement with KaTeX | Monaco editor | console; Python/C++ with per-language drafts autosaved every 5 s; Run on samples + custom input; Submit on all tests; verdict panel with masked hidden tests and an efficiency indicator), hint ladder (4 hints → editorial + reference solutions; give up), spaced repetition (1/3/7/14 days, due list on `/dsa`), OA mode (2 problems, 70/80/90 min, server-side deadline, partial credit, results), `/content-review`, Cmd/Ctrl+K palette, keyboard shortcuts (Cmd/Ctrl+Enter run, +Shift submit), sessions/events/submissions logged.
+  - **Tests:** shared 21, content 6, scripts 2, runner unit 12 + sandbox 38, web 32 (masking, sync, service with a mocked judge: ladder, SRS, OA deadline, drafts/snapshots), e2e 11 (browse/filter/random/palette, solve in Python and C++, verdicts, custom input, drafts, hidden-content leak scan, hints/editorial, give up, OA, content review). `content:validate --all` passes.
+  - Docs: `docs/adding-problems.md`, `prompts/authoring/dsa.md`, SECURITY.md hidden-content section, DECISIONS.md M2.
 
-## Next: M2 — DSA practice (no AI)
-1. DSA content schema (`problem.yaml`) in `packages/shared`, `content/dsa/<slug>/` layout (PLAN.md §3), `pnpm content:new`, `content:gen` (seeded generator → hidden tests via the reference in the sandbox), `content:validate [item|--all]` (Python + C++ references pass, brute TLEs when `tle_guard`, ≥15 hidden tests, reproducible generation).
-2. Content sync into SQLite (hash-based, at startup and on change) with the public/private split; `./content` bind-mounted read-only into web.
-3. 15 problems across difficulties/topics, in batches with validation.
-4. Problem browser (filters, constrained random), Monaco (bundled locally) editor with per-language drafts, custom input, Run/Submit, verdict panel with hidden-test masking, efficiency indicator vs reference.
-5. Hint ladder, editorial after submit/give-up, OA mode, spaced repetition, keyboard shortcuts.
-6. Playwright e2e for the DSA flow.
+## In progress
+- Nothing. Waiting for the user to test M2.
+
+## Next: M3 — AI layer and interviewer engine
+1. Providers (`none`, `ollama`, `openai-compatible`, `anthropic`) behind `LLMProvider`, plus `FakeProvider`; look up current model IDs in each provider's docs and record them in DECISIONS.md; first-run setup page + "Test connection"; encrypted key storage (master key generated into `/data`); token usage + per-session cap.
+2. Packet templates in `prompts/packets/` (versioned), Copy prompt / Download .md / Paste reply with JSON-block extraction + Zod validation (see spec §2.4–2.5); every copy/paste logged as events (`packet_copied`, `reply_pasted`).
+3. Round state machine with server-side timers and phases; `ScriptedDriver` (uses the problems' `followups` and phase prompts) and `LLMDriver`; leak post-filter (shingle overlap against `private_json`).
+4. Scoring (auto/self/ai) and scorecard with the formulas in `packages/shared` (`formula_version`), debrief with timeline replay (events already carry code snapshots from M2), review queue, redo.
+5. DSA **interview mode** (strict timer, phases, hints logged and penalized, no editorial until debrief) and **Approach Check**; extend the hidden-content e2e test to cover every API response and page payload in a session (M2 covers the DSA practice flow).
+6. History page (`/history`) from sessions/events.
 
 ## Known issues
-- None.
+- None known. The company filter has no data yet (`companies: []` on all problems).
 
 ## Cut scope
 - Java and Node/TypeScript languages (user decision during M1); the runner remains pluggable.
-- Warm container pool (optional per spec) — not needed: Python runs take ~0.2s and C++ ~0.6s including compile.
+- Warm container pool (optional per spec) — Python runs take ~0.2 s and C++ ~0.6 s including compile.
+- Home-page dashboard for due reviews (M8); due reviews are listed on `/dsa` for now.

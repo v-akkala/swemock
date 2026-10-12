@@ -76,6 +76,21 @@ outside `/work` and `/tmp`, executing from `/tmp`, running as nobody with no cap
 `no-new-privileges`, PID isolation, no Docker socket, the agent's `/proc` entries hidden, and
 that no sandbox containers remain afterwards.
 
+## Hidden content (reference solutions, hidden tests, hints, editorials)
+
+Practice and assessment integrity depend on the browser never receiving content it shouldn't have yet.
+Content is split when it is synced: `public_json` (statement, signature, sample tests) versus
+`private_json` (hints, editorial, hidden tests, checker, reference solutions). Private content is read
+only in `apps/web/src/server/dsa/service.ts` and leaves it only through deliberate reveals:
+
+- hint *n* only after hint *n-1* in the session (or once the problem is solved),
+- the editorial and reference solutions only after all four hints, a solve, or an explicit give-up,
+- judge results pass through `mask.ts`: a hidden test exposes only its number, category, verdict and
+  timing (no input, expected or actual output, stdout/stderr, or error text).
+
+`apps/web/e2e/dsa.spec.ts` scans every response body during a session for hidden inputs, unrevealed hints,
+the editorial and reference code. The same private/public split is what the spec's debrief (M3) builds on.
+
 ## Web app
 
 - Published on `127.0.0.1` only.

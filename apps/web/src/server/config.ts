@@ -15,3 +15,12 @@ export function migrationsDir(): string {
     /*turbopackIgnore: true*/ process.env.SWEMOCK_MIGRATIONS_DIR ?? path.join(process.cwd(), "drizzle"),
   );
 }
+
+/**
+ * Where the version-controlled content lives. `/content` in Docker (bind-mounted from the repo, with a
+ * copy baked into the image as a fallback); in development, the repo's `content/` next to `apps/`.
+ */
+export function contentDir(): string {
+  if (process.env.SWEMOCK_CONTENT_DIR) return path.resolve(/*turbopackIgnore: true*/ process.env.SWEMOCK_CONTENT_DIR);
+  return path.resolve(/*turbopackIgnore: true*/ process.cwd(), "../../content");
+}

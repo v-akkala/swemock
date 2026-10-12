@@ -64,6 +64,8 @@ services:
     volumes:
       - swemock-data:/data
       - runner-secret:/run/swemock:ro
+      # New or edited problems appear within seconds, without a rebuild (read-only for the app).
+      - ./content:/content:ro
     networks: [default, internal]
     extra_hosts:
       - "host.docker.internal:host-gateway"

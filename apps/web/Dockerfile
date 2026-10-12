@@ -13,30 +13,36 @@ WORKDIR /repo
 FROM base AS dev
 ENV SWEMOCK_DATA_DIR=/data
 # Pre-create the volume mount points so the named volumes in compose.dev.yml are owned by `node`.
-RUN mkdir -p /data /repo/node_modules /repo/apps/web/node_modules /repo/apps/web/.next /repo/packages/shared/node_modules \
-    /repo/services/runner/node_modules \
+RUN mkdir -p /data /repo/node_modules /repo/apps/web/node_modules /repo/apps/web/.next \
+    /repo/packages/shared/node_modules /repo/packages/content/node_modules \
   && chown -R node:node /data /repo
 USER node
-CMD ["sh", "-c", "pnpm install --frozen-lockfile && pnpm --filter @swemock/web exec next dev -H 0.0.0.0 -p 3000"]
+CMD ["sh", "-c", "pnpm install --frozen-lockfile --filter @swemock/web... && pnpm --filter @swemock/web exec next dev -H 0.0.0.0 -p 3000"]
 
 FROM base AS build
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc tsconfig.base.json ./
 COPY apps/web/package.json apps/web/
 COPY packages/shared/package.json packages/shared/
+COPY packages/content/package.json packages/content/
 RUN pnpm install --frozen-lockfile --filter @swemock/web...
 COPY apps/web apps/web
 COPY packages/shared packages/shared
+COPY packages/content packages/content
 RUN pnpm --filter @swemock/web build
 
 FROM ${NODE_IMAGE} AS runtime
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     SWEMOCK_DATA_DIR=/data \
+    SWEMOCK_CONTENT_DIR=/content \
     PORT=3000 \
     HOSTNAME=0.0.0.0
 WORKDIR /app
 COPY --from=build --chown=node:node /repo/apps/web/.next/standalone ./
 COPY --from=build --chown=node:node /repo/apps/web/.next/static ./apps/web/.next/static
+# Content is bind-mounted from the repo (compose.yaml) so `git pull` brings new problems without a
+# rebuild; this copy is the fallback when the mount is absent.
+COPY --chown=node:node content /content
 # The named volume takes this directory's ownership on first mount.
 RUN mkdir -p /data && chown node:node /data
 USER node

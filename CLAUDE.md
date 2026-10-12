@@ -13,11 +13,13 @@ Spec: `spec.md` (source of truth). Plan: `PLAN.md`. Status: `PROGRESS.md`. Choic
 ## Test
 - `pnpm typecheck && pnpm lint && pnpm test && pnpm build`
 - `pnpm test:sandbox` — real containers: DSA verdicts, project runs, containment. Needs the sandbox images (`docker compose build sandbox-python sandbox-cpp`); on macOS set `DOCKER_HOST=unix://$HOME/.docker/run/docker.sock`. To test images built under other names, set `SWEMOCK_IMAGE_PREFIX` / `SWEMOCK_SANDBOX_TAG`.
-- CI (`.github/workflows/ci.yml`): checks, sandbox tests, and compose up + a judged submission through the app.
+- `pnpm e2e` — Playwright against a live app (default http://localhost:3000, i.e. `docker compose up -d --build`; override with `SWEMOCK_URL`). First time: `pnpm --filter @swemock/web exec playwright install chromium`. Uses the real judge and writes to the app's database (drafts, submissions), so run it against a scratch stack, not data you care about.
+- `pnpm content:validate --all` — every shipped problem against the sandbox.
+- CI (`.github/workflows/ci.yml`): checks, sandbox tests + content validation, and compose up + e2e.
 - Manual: Settings → Judge → playground (`/playground`).
 
 ## Add content
-Not yet available (arrives in M2: `pnpm content:new`, `content:gen`, `content:validate`).
+`pnpm content:new dsa <slug>` → edit → `pnpm content:gen <slug>` → `pnpm content:validate <slug>` (needs Docker + sandbox images). A running app picks the new folder up within seconds (`./content` is mounted into web). Guide: `docs/adding-problems.md`; AI drafting brief: `prompts/authoring/dsa.md`. `pnpm content:validate --all` is the CI gate.
 
 ## Architecture (current)
 - Languages: **Python and C++ only**, but pluggable. Adding one = `LANGUAGES` (`packages/shared/src/judge/protocol.ts`) + codegen module (`judge/codegen/`) + runner profile (`services/runner/src/languages/`) + sandbox image (`images/sandbox-<lang>/`) + compose sandbox service.
@@ -29,7 +31,13 @@ Not yet available (arrives in M2: `pnpm content:new`, `content:gen`, `content:va
   - `server/db/open.ts`: open SQLite → back up (`VACUUM INTO /data/backups`, keep 10) → Drizzle migrate → ensure default user. `instrumentation.ts` runs this at boot.
   - `server/settings.ts`: settings are one JSON row (`settings.key = "app"`), normalized through `@swemock/shared` `normalizeSettings`.
   - `src/proxy.ts` + `server/http/request-guard.ts`: every `/api/*` request must have a loopback Host (anti DNS-rebinding); writes must be same-origin JSON (anti CSRF).
-- `packages/shared` — Zod schemas, types, codegen shared by web, runner, and (from M2) content tooling.
+- `packages/shared` — Zod schemas, types, codegen, value validators, spaced-repetition math, shared by web, runner, and content tooling.
+- `packages/content` — `problem.yaml` schema, folder loader, public/private split, hashing. Used by the web sync and by `scripts/`.
+- `scripts/` — `content.ts` (`new | gen | validate`); runs the runner's `Judge` in-process against local Docker. `templates/dsa` is the scaffold (a tiny valid example).
+- Content flow: `content/dsa/<slug>/` → `loadContentDir` → `toStored` splits into `public_json` (browser-safe: statement, signature, samples) and `private_json` (hints, editorial, hidden tests, checker, references) → `content_items`. `server/content/sync.ts` re-syncs when the tree's fingerprint changes (checked at most every 2s, from `listDsa`/`getDsa`); items missing from disk are soft-deleted; a changed item's `reviewed` resets to the manifest value.
+- DSA runtime (`apps/web/src/server/dsa/`): `service.ts` (run/submit/hints/editorial/give up, page data), `mask.ts` (the only path from judge results to the browser: hidden tests keep only label, category, verdict, time), `store.ts` (sessions, events, drafts, submissions), `srs.ts`, `oa.ts`. Routes under `app/api/dsa/`.
+- Hidden content rule: private content is read only inside `service.ts`; nothing from `getDsaPrivate` is returned unless a function reveals it deliberately (hint by level, editorial after the ladder/solve/give up). `e2e/dsa.spec.ts` scans every response body for hidden inputs, hints, editorial and reference code.
+- UI: route groups `(site)` (centered pages) and `(workspace)` (full-window code pages). Workspace = `components/dsa/workspace.tsx` (Monaco via `code-editor-lazy`, SplitPane, VerdictPanel). The editor test hook is `window.__swemockSetCode`.
 
 ## Conventions
 - Exact dependency versions (`.npmrc save-exact`). Keep the dependency count low.
@@ -39,6 +47,11 @@ Not yet available (arrives in M2: `pnpm content:new`, `content:gen`, `content:va
 - UI components are hand-written shadcn-style in `components/ui/` (Tailwind v4, CSS variables in `globals.css`).
 
 ## Gotchas
+- Monaco 0.57 has no `editor.all`; `code-editor.tsx` imports `editor/editor.api`, `features/register.all` and the python/cpp definitions only (types shimmed in `src/types/monaco.d.ts`). Workers are bundled with `new Worker(new URL(...))`; nothing loads from a CDN.
+- The React compiler lint rules reject writing refs during render, `Date.now()` in server components, and setState in effects; update refs in an effect, compute time in non-component functions (`getOa` returns `now`).
+- A helper named `useXxx` is treated as a hook by the linter, even in tests (hence `freshTempDatabase`).
+- Server tests (`*.test.ts` in apps/web) use `server/test-utils.ts` to point `getDb()` and the content dir at temp locations; they mock `server/judge/client` rather than calling Docker.
+- `next dev` writes an `AGENTS.md`; disabled with `agentRules: false` in `next.config.ts`.
 - Changing `images/**` or the C++ compile flags: the flags in `services/runner/src/languages/cpp.ts` must match the PCH build in `images/sandbox-cpp/Dockerfile`, then rebuild images.
 - Agent protocol changes touch three places: `agent.py`, the drivers, and `agentDsaSchema` in `services/runner/src/judge.ts`.
 - Docker Desktop's kernel shows down tunnel interfaces (tunl0, gre0, …) in every network namespace; "no network" is asserted via an empty route table.

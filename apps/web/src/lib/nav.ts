@@ -7,7 +7,7 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { href: "/dsa", label: "DSA", description: "LeetCode-style problems with a real judge.", milestone: "M2" },
+  { href: "/dsa", label: "DSA", description: "LeetCode-style problems with a real judge." },
   { href: "/recruiter", label: "Recruiter Screen", description: "Resume walkthrough and CS fundamentals.", milestone: "M4" },
   { href: "/behavioral", label: "Behavioral", description: "STAR answers, follow-ups, and a story bank.", milestone: "M4" },
   { href: "/lld", label: "Low-Level Design", description: "Complete the system, or implement the class.", milestone: "M5" },

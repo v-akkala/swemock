@@ -17,7 +17,8 @@
     "test:sandbox": "pnpm --filter @swemock/runner test:sandbox",
     "content:new": "tsx scripts/content.ts new",
     "content:gen": "tsx scripts/content.ts gen",
-    "content:validate": "tsx scripts/content.ts validate"
+    "content:validate": "tsx scripts/content.ts validate",
+    "e2e": "pnpm --filter @swemock/web e2e"
   },
   "devDependencies": {
     "tsx": "4.23.15"
