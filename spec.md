@@ -167,10 +167,8 @@ The app never shows a dead or disabled screen because no model is configured.
   - No published ports; reachable only on the internal compose network.
   - Requires a shared secret that is generated on first start.
 - `ollama`: optional, under the `local-ai` profile.
-- **Language sandbox images:**
-  - Python and C++ by default.
-  - Java and Node are opt-in, through compose profiles or an "Install language" button in Settings that pulls the image.
-  - The UI shows which languages are installed and hides the rest.
+- **Language sandbox images:** Python and C++, both installed by default. These are the only languages in v1.
+- **Pluggable languages:** the runner, the DSA driver codegen, and content validation are organized around per-language profiles, so another language can be added later by adding a sandbox image, a profile, and a driver, without refactoring.
 
 **Volumes.** A named volume, `swemock-data`, holds SQLite, settings, encrypted keys, and backups.
 
@@ -219,8 +217,6 @@ Pick one and explain the choice in both DECISIONS.md and SECURITY.md. If you cho
 **Toolchains.** Sandboxes have no network, so every image ships its toolchain and test framework preinstalled:
 - Python 3.12 with pytest.
 - g++ (C++20, -O2) with a vendored single-header test framework.
-- Java 21 with a vendored JUnit 5 console launcher.
-- Node LTS with TypeScript and node:test.
 
 ### 5.2 DSA harness
 - The user writes only the function or class, LeetCode-style.
@@ -268,7 +264,7 @@ Pick one and explain the choice in both DECISIONS.md and SECURITY.md. If you cho
 
 - **Every item:** the manifest passes its Zod schema.
 - **DSA:**
-  - Python and C++ reference solutions are required. Java and JS/TS need signatures and drivers; their reference solutions are optional.
+  - Python and C++ signatures, drivers, and reference solutions are required.
   - Every reference solution passes all tests within limits.
   - Problems marked `tle_guard: true` ship a brute-force solution, and it must TLE on the large tests.
   - At least 15 hidden tests, including edge and stress cases.
@@ -510,7 +506,7 @@ Both formats run against hidden unit tests in the judge.
 - A single file containing a class skeleton and method stubs.
 - A spec describes the class's overall responsibility and each method's contract: inputs, outputs, errors, expected complexity, and thread-safety when relevant.
 
-**Problems.** Split across both formats. Each is available in Python and at least one compiled language:
+**Problems.** Split across both formats. Each is available in Python and C++ where practical, and in at least one of them:
 - parking lot; LRU and LFU caches
 - rate limiter (token bucket and sliding window)
 - key-value store with BEGIN/ROLLBACK/COMMIT
@@ -547,6 +543,8 @@ Both formats run against hidden unit tests in the judge.
 
 ### 8.4 AI Fluency
 
+All AI Fluency content (comprehension codebases, review PRs, and feature-extension repos) is written in Python or C++.
+
 **Shared workspace** (CoderPad-like)
 - A file tree, Monaco tabs, and a run panel limited to the manifest's commands.
 - An AI Assistant side panel where the user attaches files or selections through "add to context":
@@ -571,7 +569,7 @@ Both formats run against hidden unit tests in the judge.
 - This works with every provider, including `none`.
 
 #### 8.4.1 Code comprehension (60 min, modeled on publicly reported 2026 AI-assisted formats)
-**Codebases.** 200–500 unfamiliar lines across 1–5 files, in Python, Java, C++, or TypeScript. Example domains:
+**Codebases.** 200–500 unfamiliar lines across 1–5 files, in Python or C++. Example domains:
 - rate-limited service, inventory system, CSV ETL pipeline
 - HTTP cache, event scheduler, tiny interpreter
 - matching engine, session/auth manager, route planner, pagination API
@@ -928,7 +926,7 @@ Version every prompt and packet template so grading can be compared across versi
   - CLAUDE.md, `.gitignore`, `.gitattributes`, `.env.example`, LICENSE
 - **M1, Judge:**
   - sandbox decision (§5.1)
-  - runner service with Python and C++ images, then Java and Node
+  - runner service with Python and C++ images, organized around pluggable language profiles
   - DSA harness and checkers
   - project-run support
   - containment tests for an infinite loop, a fork bomb, a memory hog, a network attempt, and a file write outside /work. All must be contained.

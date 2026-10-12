@@ -23,14 +23,35 @@ jobs:
       - run: pnpm test
       - run: pnpm build
 
+  sandbox:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm install -g pnpm@12.11.2
+      - run: pnpm install --frozen-lockfile
+      - name: Build sandbox images
+        run: docker compose build sandbox-python sandbox-cpp
+      - name: Sandbox and containment tests
+        run: pnpm test:sandbox
+
   docker:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - name: Build and start
-        run: docker compose up -d --build --wait --wait-timeout 120
+        run: docker compose up -d --build --wait --wait-timeout 180
       - name: Health
-        run: curl -fsS http://127.0.0.1:3000/api/health
+        run: |
+          curl -fsS http://127.0.0.1:3000/api/health
+          curl -fsS http://127.0.0.1:3000/api/runner/status | tee /dev/stderr | grep -q '"ok":true'
+      - name: Judge a submission through the app
+        run: |
+          curl -fsS -X POST -H 'content-type: application/json' http://127.0.0.1:3000/api/playground/dsa \
+            -d '{"language":"python","code":"class Solution:\n    def runningMax(self, nums):\n        out, m = [], None\n        for x in nums:\n            m = x if m is None else max(m, x)\n            out.append(m)\n        return out\n"}' \
+            | tee /dev/stderr | grep -q '"verdict":"accepted"'
       - name: Logs
         if: always()
         run: docker compose logs

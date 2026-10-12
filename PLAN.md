@@ -1,6 +1,6 @@
 # swemock: build plan
 
-Status: **draft, waiting for "go"**. This plan is written against spec.md (single source of truth). Nothing existed before it (no earlier PLAN.md, DECISIONS.md, or code), so there was nothing to reconcile.
+Status: **approved; M0 done, M1 in progress.** Scope change during M1: Python and C++ only (see §9). This plan is written against spec.md (single source of truth). Nothing existed before it (no earlier PLAN.md, DECISIONS.md, or code), so there was nothing to reconcile.
 
 Working agreement: after "go", I build one milestone at a time and **stop at the end of each one** so you can test it. Each milestone section below ends with "How you test it".
 
@@ -19,7 +19,7 @@ Working agreement: after "go", I build one milestone at a time and **stop at the
                                                                        │ Docker socket (runner only)
                                                                        ▼
                                                      sibling sandbox container per run
-                                                     (swemock-sandbox-{python,cpp,java,node})
+                                                     (swemock-sandbox-{python,cpp})
  ollama (optional, profile local-ai) ◀── web, or host Ollama via host.docker.internal
 ```
 
@@ -39,14 +39,15 @@ Working agreement: after "go", I build one milestone at a time and **stop at the
 - **Hidden content boundary**: every content item is split at sync time into `public_json` (safe for the browser) and `private_json` (reference solutions, hidden tests, manifests, rubrics). Only the debrief endpoint, after the session is `ended`, may read `private_json`. A single serializer module is the only path from content rows to responses.
 
 ### 1.2 runner (`services/runner`)
-- Small Node + TypeScript service (node:http, Zod, dockerode). No published ports.
+- Small Node + TypeScript service (node:http, Zod, a minimal hand-written Docker Engine API client over the unix socket). No published ports.
 - Every request carries `Authorization: Bearer <secret>`; compared in constant time. Requests are Zod-validated: language allowlist, file count and size caps, limit caps.
 - Launches only images from a hard-coded allowlist (`swemock-sandbox-<lang>:<pinned version>`); the image name is never taken from the request.
-- Two endpoints: `POST /v1/dsa` (compile once, run N tests, check) and `POST /v1/project` (copy workspace, run a manifest command, parse JUnit XML / JSON). `GET /healthz` reports Docker reachability and installed sandbox images. `POST /v1/images/pull` installs Java/Node on request.
+- Two endpoints: `POST /v1/dsa` (compile once, run N tests, check) and `POST /v1/project` (copy workspace, run a manifest command, parse JUnit XML / JSON). `GET /healthz` is a liveness probe; `GET /v1/status` reports Docker reachability and which sandbox images are present.
+- **Language profiles** (`services/runner/src/languages/`): one module per language declares its image, file layout, compile and run commands, memory allowance, and "run current file" command. Adding a language = a sandbox image + a profile + a driver; nothing else changes.
 
 ### 1.3 Sandbox containers (`images/`)
-- One image per language, each with its toolchain and test framework preinstalled (Python 3.12 + pytest; g++ C++20 + vendored doctest; Java 21 + vendored JUnit 5 console launcher; Node LTS + TypeScript + node:test).
-- Every image contains `/sandbox/agent.py`, a stdlib-only Python script (python3 is added to the non-Python images; ~10MB). The container's entrypoint is the agent:
+- One image per language, each with its toolchain and test framework preinstalled: Python 3.12 + pytest; g++ C++20 + vendored doctest.
+- Every image contains `/sandbox/agent.py`, a stdlib-only Python script (python3 is added to the C++ image). The container's entrypoint is the agent:
   1. reads one JSON bundle (files + tests + limits) from **stdin**, writes files to `/work` (tmpfs);
   2. compiles if needed (compile errors → `Compile Error`);
   3. runs each test as a child process with a per-test wall-clock timeout, measuring time and peak RSS (`getrusage`), and detecting OOM kills via the cgroup v2 `memory.events` counter;
@@ -69,11 +70,13 @@ signature:
 checker: exact               # exact | unordered | float:1e-6 | custom
 ```
 
-Type grammar: `int | long | double | bool | string | T[] | T[][] | ListNode | TreeNode | Graph` (Graph = `{n, edges}`). Design problems list methods with their own params/returns and use the LeetCode-style `["Ctor","op",...], [[args],...]` test format.
+Type grammar: `int | long | double | bool | char | string | ListNode | TreeNode`, composed with `T[]` and `list<T>`. Graphs are edge lists (`int[][]`). Design problems list methods with their own params/returns and use the LeetCode-style `["Ctor","op",...], [[args],...]` test format.
 
-`packages/shared/src/codegen/` turns the signature into, for each of Python, C++, Java, TypeScript:
+`packages/shared/src/judge/codegen/` turns the signature into, for each language:
 - the starter stub shown in the editor, and
-- the driver (JSON parse → build ListNode/TreeNode → call → serialize).
+- for C++, the driver `main.cpp` (JSON parse → build ListNode/TreeNode → call → serialize). Python uses a generic driver in its image that reads the signature at runtime.
+
+Stubs and drivers are registered per language, so a new language plugs in without touching the others.
 
 Authors never write drivers. Adding a new *type* is a codegen change made once, with unit tests.
 
@@ -134,7 +137,7 @@ apps/web/                     Next.js app
   e2e/                        Playwright
 services/runner/              runner service + containment tests
 packages/shared/              Zod schemas, types, codegen, scoring formulas
-images/sandbox-{python,cpp,java,node}/   Dockerfiles; images/common/agent.py
+images/sandbox-{python,cpp}/   Dockerfiles + language runtime; images/common/agent.py
 prompts/
   interviewer/ grader/ packets/   versioned templates (front-matter `version:`)
   authoring/<type>.md             guides for drafting content with any AI tool
@@ -142,7 +145,7 @@ content/                       layout exactly as spec §3
   dsa/<slug>/
     problem.yaml               manifest (metadata, signature, checker, limits, hints, follow-ups)
     statement.md  editorial.md
-    solutions/reference.py  reference.cpp  [brute.py] [reference.java|ts]
+    solutions/reference.py  reference.cpp  [brute.py]
     tests/visible.json  tests/gen.py  tests/hidden.json (generated, committed)
     checker.py                 only for checker: custom
 scripts/                       content:new, content:validate, content:sync, content:gen
@@ -191,7 +194,7 @@ Every milestone ends with: typecheck, lint, unit tests, `content:validate`, sand
 - **How you test it:** `docker compose up -d` → http://localhost:3000 shows the shell; change a setting, restart the container, it persists; `/data/backups` has a backup.
 
 ### M1 — Judge
-- Sandbox images (Python, C++, then Java, Node), `agent.py`, runner service, codegen for drivers/stubs, checkers, project runs with JUnit/JSON parsing, health endpoint, language install button.
+- Sandbox images (Python, C++), `agent.py`, runner service with pluggable language profiles, codegen for drivers/stubs, checkers, project runs with JUnit/JSON parsing, status endpoint, runner health in the UI.
 - Containment tests.
 - **How you test it:** `pnpm test:sandbox`; a dev-only `/dev/judge` page to paste code and run it in each language and watch verdicts (TLE, MLE, RE, CE included).
 
@@ -215,12 +218,12 @@ Every milestone ends with: typecheck, lint, unit tests, `content:validate`, sand
 - **How you test it:** run both rounds in both modes with and without AI.
 
 ### M5 — LLD
-- Formats A and B, edit-tracking on file 1, requirement-change mechanic with extension tests, design-review checklist, Mermaid in debrief. **8 problems** (Python + one compiled language each).
+- Formats A and B, edit-tracking on file 1, requirement-change mechanic with extension tests, design-review checklist, Mermaid in debrief. **8 problems** (Python and C++ where practical).
 
 ### M6 — AI Fluency
 - CoderPad-like workspace, assistant panel (connected + packet), diff preview with per-hunk apply, full logging.
 - Fallible mode: AST/token-level mutation operators, syntax re-check in the sandbox, catch detection.
-- Comprehension (gutter annotations + matching), code review PR view, feature extension. **4 items each.**
+- Comprehension (gutter annotations + matching), code review PR view, feature extension. **4 items each**, all in Python or C++.
 
 ### M7 — ML rounds
 - Excalidraw (self-hosted) whiteboard → text graph, notes templates, curveball timeline.
@@ -244,7 +247,7 @@ Every milestone ends with: typecheck, lint, unit tests, `content:validate`, sand
 | --- | --- |
 | Docker socket is host-root equivalent | §4 mitigations; documented threat model in SECURITY.md |
 | MLE vs TLE vs RE detection differs across cgroup setups (Docker Desktop vs Linux) | Read `memory.events` inside the container; fall back to exit signal + peak RSS heuristics; containment tests on both macOS and Linux CI |
-| JVM and Node misbehave with tight memory limits | Per-language memory headroom and JVM flags (`-Xmx` below the cgroup limit, `-Xss`), documented per-language multiplier on time limits |
+| Peak-memory accounting per test | Agent resets VmHWM per test and subtracts memory leaked by earlier tests; container cgroup has headroom above the user limit as an OOM backstop |
 | `better-sqlite3` native module inside Next standalone, multi-arch | Build inside the target arch with buildx; smoke test both arches in release CI |
 | Bundling Monaco, Excalidraw, Mermaid, KaTeX, fonts locally with Next | Load with `next/dynamic` (client-only), copy assets to `public/` at build; offline e2e run with network blocked |
 | Leak filter false negatives/positives | Threshold tuned by tests over the content bank; the hidden-content test guards the API side independently |
@@ -258,7 +261,7 @@ Every milestone ends with: typecheck, lint, unit tests, `content:validate`, sand
 1. **Sandbox:** Option A (sibling containers), with a restricted socket proxy if it proves reliable on Docker Desktop.
 2. **Content delivery:** bind-mount the repo's `./content` into `web` read-only, so `git pull` or local additions show up without rebuilding images. Content is also baked into the image as a fallback if the mount is missing.
 3. **Pre-release compose:** `compose.yaml` builds locally until v1.0.0 images exist on GHCR.
-4. **C++ test framework:** doctest (single header). Java: JUnit 5 console standalone jar. TS: `node:test` with `tsx`.
+4. **C++ test framework:** doctest (single header).
 5. **Package choices (pinned, minimal):** next, react, drizzle-orm + better-sqlite3, zod, @monaco-editor/react + monaco-editor, @excalidraw/excalidraw, katex, mermaid, unpdf (PDF text), @anthropic-ai/sdk, dockerode, tailwind + shadcn/ui, vitest, playwright, eslint, js-yaml.
 6. **Default ports/names:** `SWEMOCK_PORT=3000`, volume `swemock-data`, images `ghcr.io/<owner>/swemock-*` — I need the GitHub owner name when we get to M10.
 7. **Placeholder routes in M0:** nav links to not-yet-built rounds show a "planned for Mx" page. If you'd rather hide them until built, say so.
@@ -267,3 +270,8 @@ Every milestone ends with: typecheck, lint, unit tests, `content:validate`, sand
 
 ## 8. Spec edits made while planning
 - Applied the two notes at the end of spec.md: §6.3 now has the reduced v1.0 targets (larger ones moved to a "Later releases" column), and the "make adding problems easy" requirement moved into §6.4. Plan milestones M5–M9 use the new numbers.
+
+## 9. Scope change (during M1)
+- Languages are **Python and C++ only**. Java and Node/TypeScript sandboxes, drivers, compose profiles, and the "Install language" button are removed from the plan.
+- DSA: Python and C++ signatures, drivers, and reference solutions. LLD and AI Fluency content: Python or C++ (LLD in both where practical).
+- The runner stays language-pluggable (per-language profiles), so a language can be added later without refactoring.

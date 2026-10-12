@@ -1,13 +1,27 @@
-# Contributors: `docker compose -f compose.dev.yml up` — builds from source with hot reload.
+# Contributors: `docker compose -f compose.dev.yml up` — builds from source with hot reload for web.
 # Uses its own data volume so development never touches your real swemock data.
+# The runner and sandbox images are built from source too (no hot reload; rebuild with --build).
 name: swemock-dev
 
 services:
+  sandbox-python:
+    extends: { file: compose.yaml, service: sandbox-python }
+  sandbox-cpp:
+    extends: { file: compose.yaml, service: sandbox-cpp }
+  runner:
+    extends: { file: compose.yaml, service: runner }
+    networks: [internal]
+    depends_on:
+      sandbox-python: { condition: service_completed_successfully }
+      sandbox-cpp: { condition: service_completed_successfully }
+
   web:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
       target: dev
+    depends_on:
+      runner: { condition: service_healthy }
     ports:
       - "127.0.0.1:${SWEMOCK_PORT:-3000}:3000"
     volumes:
@@ -16,16 +30,26 @@ services:
       - dev-node-modules:/repo/node_modules
       - dev-web-node-modules:/repo/apps/web/node_modules
       - dev-shared-node-modules:/repo/packages/shared/node_modules
+      - dev-runner-node-modules:/repo/services/runner/node_modules
       - dev-next:/repo/apps/web/.next
       - swemock-dev-data:/data
+      - runner-secret:/run/swemock:ro
+    networks: [default, internal]
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
       WATCHPACK_POLLING: "true"
+      SWEMOCK_RUNNER_URL: http://runner:8787
+
+networks:
+  internal:
+    internal: true
 
 volumes:
   dev-node-modules:
   dev-web-node-modules:
   dev-shared-node-modules:
+  dev-runner-node-modules:
   dev-next:
   swemock-dev-data:
+  runner-secret:

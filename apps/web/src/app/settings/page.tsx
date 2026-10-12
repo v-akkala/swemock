@@ -3,6 +3,7 @@ import path from "node:path";
 import { getDb } from "@/server/db";
 import { dataDir } from "@/server/config";
 import { readSettings } from "@/server/settings";
+import { JudgeSection } from "./judge-section";
 import { SettingsForm } from "./settings-form";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +20,7 @@ export default function SettingsPage() {
     <div className="max-w-2xl space-y-8">
       <h1 className="text-2xl font-semibold">Settings</h1>
       <SettingsForm initial={settings} />
+      <JudgeSection />
       <section aria-labelledby="data-heading" className="space-y-2">
         <h2 id="data-heading" className="text-lg font-semibold">
           Data

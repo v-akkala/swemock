@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { NAV_ITEMS } from "@/lib/nav";
 import { getDb } from "@/server/db";
 import { readSettings } from "@/server/settings";
+import { RunnerStatus } from "@/components/runner-status";
 import { ThemeToggle } from "@/components/theme-toggle";
 import "./globals.css";
 
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 </li>
               ))}
             </ul>
+            <RunnerStatus />
             <Link href="/settings" className="hover:bg-muted rounded-md px-2 py-1 text-sm">
               Settings
             </Link>

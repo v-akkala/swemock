@@ -1,10 +1,54 @@
 # swemock — `docker compose up -d`, then open http://localhost:3000
 #
-# Until v1.0.0 is published to GHCR this file builds the image locally (pull_policy: build).
+# Until v1.0.0 is published to GHCR this file builds images locally (pull_policy: build).
 # From v1.0.0 on it pulls prebuilt multi-arch images pinned to the release version.
 name: swemock
 
+x-sandbox: &sandbox
+  # Sandbox images are never run as services. Compose builds (later: pulls) them, then runs a
+  # toolchain self-test with the same lockdown the runner uses, and the container exits.
+  pull_policy: build
+  restart: "no"
+  network_mode: none
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  tmpfs: ["/tmp", "/work"]
+
 services:
+  sandbox-python:
+    <<: *sandbox
+    image: ghcr.io/v-akkala/swemock-sandbox-python:${SWEMOCK_VERSION:-0.1.0}
+    build: { context: images, dockerfile: sandbox-python/Dockerfile }
+    command: ["--selftest", "python"]
+
+  sandbox-cpp:
+    <<: *sandbox
+    image: ghcr.io/v-akkala/swemock-sandbox-cpp:${SWEMOCK_VERSION:-0.1.0}
+    build: { context: images, dockerfile: sandbox-cpp/Dockerfile }
+    command: ["--selftest", "cpp"]
+
+  runner:
+    image: ghcr.io/v-akkala/swemock-runner:${SWEMOCK_VERSION:-0.1.0}
+    build: { context: ., dockerfile: services/runner/Dockerfile }
+    pull_policy: build
+    restart: unless-stopped
+    depends_on:
+      sandbox-python: { condition: service_completed_successfully }
+      sandbox-cpp: { condition: service_completed_successfully }
+    environment:
+      SWEMOCK_IMAGE_PREFIX: ghcr.io/v-akkala/swemock-
+      SWEMOCK_SANDBOX_TAG: ${SWEMOCK_VERSION:-0.1.0}
+      SWEMOCK_VERSION: ${SWEMOCK_VERSION:-0.1.0}
+    volumes:
+      # The Docker socket is mounted only here. See SECURITY.md.
+      - ${SWEMOCK_DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
+      - runner-secret:/run/swemock
+    networks: [internal]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
   web:
     image: ghcr.io/v-akkala/swemock-web:${SWEMOCK_VERSION:-0.1.0}
     build:
@@ -13,15 +57,26 @@ services:
       target: runtime
     pull_policy: build
     restart: unless-stopped
+    depends_on:
+      runner: { condition: service_healthy }
     ports:
       - "127.0.0.1:${SWEMOCK_PORT:-3000}:3000"
     volumes:
       - swemock-data:/data
+      - runner-secret:/run/swemock:ro
+    networks: [default, internal]
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
       SWEMOCK_ALLOWED_HOSTS: ${SWEMOCK_ALLOWED_HOSTS:-}
+      SWEMOCK_RUNNER_URL: http://runner:8787
+
+networks:
+  # No route out: the runner is reachable only from web.
+  internal:
+    internal: true
 
 volumes:
   swemock-data:
     name: swemock-data
+  runner-secret:

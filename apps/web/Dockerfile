@@ -14,6 +14,7 @@ FROM base AS dev
 ENV SWEMOCK_DATA_DIR=/data
 # Pre-create the volume mount points so the named volumes in compose.dev.yml are owned by `node`.
 RUN mkdir -p /data /repo/node_modules /repo/apps/web/node_modules /repo/apps/web/.next /repo/packages/shared/node_modules \
+    /repo/services/runner/node_modules \
   && chown -R node:node /data /repo
 USER node
 CMD ["sh", "-c", "pnpm install --frozen-lockfile && pnpm --filter @swemock/web exec next dev -H 0.0.0.0 -p 3000"]
@@ -22,7 +23,7 @@ FROM base AS build
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc tsconfig.base.json ./
 COPY apps/web/package.json apps/web/
 COPY packages/shared/package.json packages/shared/
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --filter @swemock/web...
 COPY apps/web apps/web
 COPY packages/shared packages/shared
 RUN pnpm --filter @swemock/web build
