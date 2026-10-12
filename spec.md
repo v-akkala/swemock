@@ -288,7 +288,7 @@ Pick one and explain the choice in both DECISIONS.md and SECURITY.md. If you cho
 
 | Content | Target |
 | --- | --- |
-| DSA problems | 150 (about 25% easy, 55% medium, 20% hard) |
+| DSA problems | 50 (about 25% easy, 55% medium, 20% hard) |
 | CS fundamentals questions | 150 |
 | LLD problems | 20 |
 | AI Fluency: comprehension codebases | 10 |
@@ -985,3 +985,6 @@ Keep `docker compose up` working from M0 onward.
   - CI is green
   - the no-outbound-network smoke test passes
 - **Release:** the v1.0.0 release is published with GHCR images, and the README quickstart works exactly as written.
+
+
+Please make it really easy to add more problems to the problem bank because that is an update that is going to happen frequently
