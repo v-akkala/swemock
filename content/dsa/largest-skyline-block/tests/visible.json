@@ -1,0 +1,5 @@
+[
+  { "input": { "heights": [2, 1, 5, 6, 2, 3] }, "expected": 10 },
+  { "input": { "heights": [4, 4, 4] }, "expected": 12 },
+  { "input": { "heights": [0, 3, 0] }, "expected": 3 }
+]

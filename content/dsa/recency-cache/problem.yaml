@@ -1,0 +1,27 @@
+title: Recency Cache
+difficulty: medium
+tags: [design, arrays-hashing]
+companies: []
+source: authored
+reviewed: false
+version: 1
+signature:
+  kind: design
+  className: RecencyCache
+  constructorParams:
+    - { name: capacity, type: int }
+  methods:
+    - { name: get, params: [{ name: key, type: int }], returns: int }
+    - { name: put, params: [{ name: key, type: int }, { name: value, type: int }], returns: void }
+checker: { type: exact }
+limits: { time_ms: 2000, memory_mb: 256 }
+tle_guard: true
+hints:
+  - "Both operations must be fast, so scanning for the oldest entry is out. What two jobs does the structure have: finding a key, and knowing the usage order?"
+  - "A hash map finds a key in O(1); an ordered sequence tracks recency. The trick is making removal from the middle of that sequence O(1) too."
+  - "A doubly linked list gives O(1) removal when you already hold the node. Keep the map from key to node, move a node to the front on every get or put, and evict from the back."
+  - "get: if key not in map return -1; move node to front; return its value. put: if key exists update and move to front; else if size == capacity remove the back node (and its map entry); insert the new node at the front and index it in the map."
+followups:
+  - "Make it thread-safe. Where do you put the lock, and can reads proceed in parallel?"
+  - "Entries now expire after a time-to-live in addition to being evicted by recency. How do you expire them without scanning?"
+  - "Instead of evicting the least recently used entry, evict the least frequently used one. What structure gives O(1)?"

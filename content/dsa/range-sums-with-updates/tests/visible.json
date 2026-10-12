@@ -1,0 +1,14 @@
+[
+  {
+    "input": { "ops": ["LiveSums", "rangeSum", "update", "rangeSum", "rangeSum"], "args": [[[3, -1, 4, 1, 5]], [0, 2], [1, 10], [0, 2], [1, 4]] },
+    "expected": [null, 6, null, 17, 20]
+  },
+  {
+    "input": { "ops": ["LiveSums", "rangeSum", "update", "rangeSum"], "args": [[[7]], [0, 0], [0, -7], [0, 0]] },
+    "expected": [null, 7, null, -7]
+  },
+  {
+    "input": { "ops": ["LiveSums", "update", "update", "rangeSum", "rangeSum"], "args": [[[1, 1, 1, 1]], [0, 5], [3, -5], [0, 3], [1, 2]] },
+    "expected": [null, null, null, 2, 2]
+  }
+]

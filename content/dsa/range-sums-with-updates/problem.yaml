@@ -1,0 +1,27 @@
+title: Range Sums With Updates
+difficulty: hard
+tags: [design, segment-tree]
+companies: []
+source: authored
+reviewed: false
+version: 1
+signature:
+  kind: design
+  className: LiveSums
+  constructorParams:
+    - { name: nums, type: "int[]" }
+  methods:
+    - { name: update, params: [{ name: index, type: int }, { name: value, type: int }], returns: void }
+    - { name: rangeSum, params: [{ name: left, type: int }, { name: right, type: int }], returns: long }
+checker: { type: exact }
+limits: { time_ms: 2000, memory_mb: 256 }
+tle_guard: true
+hints:
+  - "If the array never changed you could precompute prefix sums. What goes wrong with prefix sums when one element changes?"
+  - "Changing one element would alter up to n prefix sums. You want a structure where an update and a query each touch only about log n stored numbers."
+  - "A Fenwick tree (binary indexed tree) or a segment tree stores sums of power-of-two sized blocks. A point update adjusts the blocks that contain the index; a prefix query adds up O(log n) blocks."
+  - "Fenwick: tree[i] holds the sum of a block ending at i (1-based). add(i, delta): while i <= n: tree[i] += delta; i += i & -i. prefix(i): s = 0; while i > 0: s += tree[i]; i -= i & -i. rangeSum(l, r) = prefix(r + 1) - prefix(l); update = add(index, value - current[index])."
+followups:
+  - "Add range updates (add a value to every element in a range) while keeping range sum queries fast. What do you need?"
+  - "Swap sums for minimums. Does the Fenwick tree still work for the update? Why or why not, and what do you use instead?"
+  - "How would you build the structure in O(n) instead of n separate updates?"

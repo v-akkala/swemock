@@ -1,0 +1,25 @@
+title: Largest Block in a Skyline
+difficulty: hard
+tags: [stack]
+companies: []
+source: authored
+reviewed: false
+version: 1
+signature:
+  kind: function
+  name: largestBlock
+  params:
+    - { name: heights, type: "int[]" }
+  returns: long
+checker: { type: exact }
+limits: { time_ms: 2000, memory_mb: 256 }
+tle_guard: true
+hints:
+  - "Fix the shortest bar inside a block. How far can the block extend to the left and to the right while that bar stays the shortest?"
+  - "It extends until it meets a strictly shorter bar on each side. So for every bar, you need the nearest shorter bar on its left and on its right."
+  - "Finding the nearest smaller element for every position is the classic job of a monotonic stack: keep indices of bars with increasing heights, and pop a bar when a shorter one arrives."
+  - "stack = []; for i in 0..n (with a sentinel height 0 at i = n): while stack and heights[stack.top] >= current height: h = heights[pop]; left = stack.top + 1 (or 0 if empty); area = h * (i - left); best = max(best, area). Then push i."
+followups:
+  - "Extend this to a 2D grid of 0s and 1s: find the largest all-ones rectangle. How do the histogram rows come about?"
+  - "Why does each bar get pushed and popped at most once? What is the total time?"
+  - "Solve it with divide and conquer on the shortest bar. What is the worst-case time, and how can a segment tree help?"

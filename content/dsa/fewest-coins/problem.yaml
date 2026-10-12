@@ -1,0 +1,26 @@
+title: Fewest Coins
+difficulty: medium
+tags: [dp]
+companies: []
+source: authored
+reviewed: false
+version: 1
+signature:
+  kind: function
+  name: fewestCoins
+  params:
+    - { name: coins, type: "int[]" }
+    - { name: amount, type: int }
+  returns: int
+checker: { type: exact }
+limits: { time_ms: 2000, memory_mb: 256 }
+tle_guard: true
+hints:
+  - "Greedily taking the largest coin can fail (try coins 1, 3, 4 and amount 6). What smaller questions could the answer be built from?"
+  - "If the last coin you use is c, the rest is the best way to pay amount - c. So the best answer for an amount depends only on best answers for smaller amounts."
+  - "Define best[a] as the fewest coins that make exactly a. Compute it for a = 0, 1, 2, ... up to the target, each time trying every coin as the last one."
+  - "best[0] = 0; for a in 1..amount: best[a] = min(best[a - c] + 1 for each coin c <= a with best[a - c] finite), otherwise infinity. Return best[amount], or -1 if it is infinite."
+followups:
+  - "Count the number of different combinations of coins that make the amount, where order does not matter. How does the loop nesting change?"
+  - "The amount can be as large as 10^9 with only a few coin types. Is the dynamic program still feasible?"
+  - "Return the actual coins used, not just the count. What extra information do you store?"

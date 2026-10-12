@@ -1,0 +1,25 @@
+title: Minimum Assignment Cost
+difficulty: hard
+tags: [dp, bitmask]
+companies: []
+source: authored
+reviewed: false
+version: 1
+signature:
+  kind: function
+  name: minAssignmentCost
+  params:
+    - { name: cost, type: "int[][]" }
+  returns: int
+checker: { type: exact }
+limits: { time_ms: 2000, memory_mb: 256 }
+tle_guard: true
+hints:
+  - "Trying every way to pair workers with tasks means n! possibilities. What do different orderings of the same already-assigned tasks have in common?"
+  - "If you decide workers in order 0, 1, 2, ..., then what matters for the future is only WHICH tasks are already taken, not who took which. That is a subset of tasks."
+  - "Let dp[mask] be the cheapest way to give tasks in `mask` to the first popcount(mask) workers. The next worker is worker popcount(mask), and may take any task not in the mask."
+  - "dp[0] = 0; for mask in increasing order: w = popcount(mask); for task t not in mask: dp[mask | 1<<t] = min(dp[mask | 1<<t], dp[mask] + cost[w][t]). Answer: dp[(1<<n) - 1]."
+followups:
+  - "There are 200 workers and 200 tasks. The bitmask solution is hopeless; which classic algorithm solves the assignment problem in polynomial time?"
+  - "Some workers can't do some tasks (infinite cost). How does the DP handle that, and what if no complete assignment exists?"
+  - "Return the actual assignment, not just its cost. What do you store?"
