@@ -35,6 +35,7 @@ ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     SWEMOCK_DATA_DIR=/data \
     SWEMOCK_CONTENT_DIR=/content \
+    SWEMOCK_PROMPTS_DIR=/prompts \
     PORT=3000 \
     HOSTNAME=0.0.0.0
 WORKDIR /app
@@ -43,6 +44,8 @@ COPY --from=build --chown=node:node /repo/apps/web/.next/static ./apps/web/.next
 # Content is bind-mounted from the repo (compose.yaml) so `git pull` brings new problems without a
 # rebuild; this copy is the fallback when the mount is absent.
 COPY --chown=node:node content /content
+# Versioned interviewer, grader, and packet templates (they change with the code, so they're baked in).
+COPY --chown=node:node prompts /prompts
 # The named volume takes this directory's ownership on first mount.
 RUN mkdir -p /data && chown node:node /data
 USER node

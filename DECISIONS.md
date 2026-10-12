@@ -72,3 +72,26 @@ One line each: decision — rationale.
 - Cmd/Ctrl+K palette lists pages and problems — spec §12; plain component, no dependency.
 - Playwright e2e runs against a live stack (compose in CI) with the real judge, and derives expectations from the content on disk so adding problems doesn't break tests.
 - Test hook `window.__swemockSetCode` targets the visible Monaco editor — typing whole programs through Monaco's auto-indent is unreliable.
+
+## M3
+- **Default models** (looked up at implementation time): Anthropic `claude-opus-5-5` for interviewer, assistant, and grader, `claude-haiku-5-5` for the fast role; Ollama `qwen3.5:9b` / `qwen3.5:4b` (current, run on 16 GB machines); OpenAI-compatible has no defaults (endpoints vary) — the user names models.
+- Anthropic via the official SDK with streaming, prompt caching on the stable system block (round template + problem + hidden context), and server-side refusal fallbacks (`fallbacks: "default"`) on models that support them — a declined request is re-run on a suitable model within the same call.
+- **No temperature on Anthropic**: current Claude models reject sampling parameters; "grader at temperature 0" applies to Ollama/OpenAI-compatible. Grading consistency comes from the fixed rubric, anchors, and JSON schema. Effort is set per call (low for the interviewer and approach checks, medium for grading).
+- Ollama and OpenAI-compatible share one fetch-based provider (no SDK for one endpoint), with retry on 429/5xx/network (1 s, 2 s, 4 s).
+- Structured output is the same path for every provider and for paste-back: the reply ends with one fenced ```json block, extracted and Zod-validated; connected calls get one automatic repair retry with the validation error.
+- Fake provider and data reset are gated by one switch, `SWEMOCK_TEST_MODE=1` — e2e needs both; one switch is easier to keep off in real use.
+- Interview timers are server-side and settled lazily on every read (state endpoint polled every 3 s) — survives refreshes and restarts with no background worker.
+- Both interviewers open with the scripted greeting — instant and deterministic; the AI takes over from the first candidate message. Phase changes appear as notes; the scripted interviewer also posts the phase's first line, the AI sees the phase in its per-turn context.
+- An accepted submission in an interview moves the round to "testing", where the problem's follow-ups are asked first — mirrors real interviews; the session keeps running (unlike practice).
+- AI interviewer turn context = elapsed time, phase and time left, a line diff of the code since its last turn (LCS, truncated), and the latest test result; the stable part (template, problem, hidden context) is a separate cached system block.
+- Nudges: the model marks them with `<<nudge>>`; the server strips the marker and logs a `hint` event, which counts against the score like a hint.
+- **Leak filter**: shingles (8 code tokens ×2, or one 10-word prose shingle) plus a code-block rule in interview mode, applied while streaming with a 160-character look-behind and fence hold-back — found during testing that without the look-behind the first part of a leaked solution reached the browser before detection.
+- Scripted lines live in `prompts/interviewer/dsa-scripted.md` (one section per phase) — editable without code, versioned like other prompts.
+- Packets: live (problem + rules only), grading (after the round; rubric, anchors, editorial for calibration, transcript, events, final code), approach check. The connected grader receives the grading packet itself as its user message, so live and pasted grading are identical inputs.
+- Interviews can run "in another chat" (live packet); the pasted conversation is included in the grading packet.
+- Scoring formula v1 (docs/scoring.md): ai > self > auto per dimension; red flags −30 points; recommendation needs a self or AI score; cap at Lean No Hire if hidden tests never all passed.
+- Rubrics are hidden until the debrief: served only after the round and imported via `@swemock/shared/scoring` so they never reach client bundles.
+- On AI failure the interview offers "continue with the scripted interviewer" or "switch to copy-prompt"; both flip the session's driver.
+- First run: the home page redirects to `/setup` until setup is completed or skipped — other URLs work immediately.
+- Bundled Ollama is an optional compose service under the `local-ai` profile (pinned `ollama/ollama:0.40.3`, models in a named volume); host Ollama stays the recommendation on macOS.
+- Approach Check lives in a practice-mode tab; connected uses the `fast` role, otherwise a packet with paste-back.

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import type { EditorialPayload, HintPayload, RunResponse } from "@/lib/dsa-types";
 import { cn } from "@/lib/utils";
+import { PacketPanel } from "@/components/ai/packet-panel";
 import { VerdictPanel } from "./verdict-panel";
 
 export interface WorkspaceLanguage {
@@ -28,8 +29,10 @@ export interface WorkspaceProps {
   statementMd: string;
   languages: WorkspaceLanguage[];
   samples: { id: string; label: string; input: unknown }[];
-  mode: "practice" | "oa";
+  mode: "practice" | "oa" | "interview";
   sessionId: string | null;
+  /** A model is configured: approach checks run live instead of via a copy-prompt packet. */
+  aiConnected?: boolean;
   solved: boolean;
   hintCount: number;
   initialHints: { level: number; text: string }[];
@@ -37,7 +40,7 @@ export interface WorkspaceProps {
 }
 
 const AUTOSAVE_MS = 5000;
-type LeftTab = "description" | "hints" | "editorial";
+type LeftTab = "description" | "approach" | "hints" | "editorial";
 type ConsoleTab = "testcase" | "result";
 
 export function ProblemWorkspace(props: WorkspaceProps) {
@@ -209,7 +212,14 @@ export function ProblemWorkspace(props: WorkspaceProps) {
   const left = (
     <section className="flex h-full min-h-0 flex-col" aria-label="Problem">
       <div role="tablist" aria-label="Problem sections" className="border-border flex shrink-0 gap-1 border-b px-2 pt-1">
-        {(["description", ...(mode === "practice" ? ["hints"] : []), ...(editorial ? ["editorial"] : [])] as LeftTab[]).map((t) => (
+        {(
+          [
+            "description",
+            ...(mode === "practice" ? ["approach"] : []),
+            ...(mode !== "oa" ? ["hints"] : []),
+            ...(editorial ? ["editorial"] : []),
+          ] as LeftTab[]
+        ).map((t) => (
           <button
             key={t}
             role="tab"
@@ -248,8 +258,12 @@ export function ProblemWorkspace(props: WorkspaceProps) {
             <Markdown>{props.statementMd}</Markdown>
           </>
         )}
-        {leftTab === "hints" && mode === "practice" && (
+        {leftTab === "approach" && mode === "practice" && (
+          <ApproachCheck slug={slug} sessionId={sessionId} aiConnected={Boolean(props.aiConnected)} onSession={setSessionId} />
+        )}
+        {leftTab === "hints" && mode !== "oa" && (
           <HintLadder
+            interview={mode === "interview"}
             hintCount={hintCount}
             hints={hints}
             canSeeEditorial={canSeeEditorial}
@@ -383,6 +397,7 @@ function difficultyColor(d: string): string {
 }
 
 function HintLadder(props: {
+  interview: boolean;
   hintCount: number;
   hints: { level: number; text: string }[];
   canSeeEditorial: boolean;
@@ -394,10 +409,17 @@ function HintLadder(props: {
   const next = props.hints.length + 1;
   return (
     <div className="space-y-4 text-sm">
-      <p className="text-muted-foreground">
-        Hints are revealed one at a time, from a nudge toward the full editorial. Using them is fine in practice mode;
-        problems you needed help with come back for review.
-      </p>
+      {props.interview ? (
+        <p className="text-amber-600 dark:text-amber-400" data-testid="hint-penalty">
+          This is an interview: hints are recorded and lower your score, as they would with a real interviewer. The editorial is in the
+          debrief.
+        </p>
+      ) : (
+        <p className="text-muted-foreground">
+          Hints are revealed one at a time, from a nudge toward the full editorial. Using them is fine in practice mode; problems you
+          needed help with come back for review.
+        </p>
+      )}
       <ol className="space-y-3">
         {Array.from({ length: props.hintCount }, (_, i) => i + 1).map((level) => {
           const hint = props.hints.find((h) => h.level === level);
@@ -414,6 +436,7 @@ function HintLadder(props: {
             </li>
           );
         })}
+        {!props.interview && (
         <li className="rounded-md border border-border p-3">
           <p className="mb-1 text-xs font-medium">Hint {props.hintCount + 1}: the editorial</p>
           <Button
@@ -426,12 +449,15 @@ function HintLadder(props: {
           </Button>
           {!props.canSeeEditorial && <p className="text-muted-foreground mt-2 text-xs">Unlocks after all four hints, or once you solve the problem.</p>}
         </li>
+        )}
       </ol>
-      <div className="border-border border-t pt-3">
-        <Button variant="ghost" onClick={props.onGiveUp} data-testid="give-up" className="text-red-600 dark:text-red-400">
-          Give up and show the solution
-        </Button>
-      </div>
+      {!props.interview && (
+        <div className="border-border border-t pt-3">
+          <Button variant="ghost" onClick={props.onGiveUp} data-testid="give-up" className="text-red-600 dark:text-red-400">
+            Give up and show the solution
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -461,6 +487,75 @@ function EditorialView({ editorial, languages }: { editorial: EditorialPayload; 
           </div>
           <pre className="bg-muted overflow-auto rounded-md p-3 font-mono text-xs">{editorial.references[current.id]}</pre>
         </div>
+      )}
+    </div>
+  );
+}
+
+/** Approach Check (spec §7.8): a verdict on a plan, never code. Live with a model, or via a packet. */
+function ApproachCheck(props: { slug: string; sessionId: string | null; aiConnected: boolean; onSession: (id: string) => void }) {
+  const [approach, setApproach] = useState("");
+  const [reply, setReply] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const approachRef = useRef(approach);
+  useEffect(() => {
+    approachRef.current = approach;
+  });
+
+  async function check() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await api<{ sessionId: string; reply: string }>(`/api/dsa/${props.slug}/approach`, "POST", {
+        approach,
+        sessionId: props.sessionId ?? undefined,
+      });
+      props.onSession(res.sessionId);
+      setReply(res.reply);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="space-y-3 text-sm" data-testid="approach-check">
+      <p className="text-muted-foreground">
+        Describe your plan in plain words (no code). You&apos;ll get a verdict, &ldquo;Works&rdquo;, &ldquo;Works but suboptimal&rdquo;, or
+        &ldquo;Doesn&apos;t work&rdquo;, and a line of why. No AI at all? The hint ladder serves the same purpose.
+      </p>
+      <textarea
+        value={approach}
+        onChange={(e) => setApproach(e.target.value)}
+        aria-label="Your approach"
+        placeholder="For example: scan once and keep a hash map of counts…"
+        className="bg-card h-28 w-full rounded-md border border-border p-2 text-sm"
+      />
+      {props.aiConnected ? (
+        <>
+          <Button onClick={check} disabled={busy || !approach.trim()} data-testid="check-approach">
+            {busy ? "Checking…" : "Check approach"}
+          </Button>
+          {reply && (
+            <div className="bg-muted rounded-md p-3 whitespace-pre-wrap" data-testid="approach-reply">
+              {reply}
+            </div>
+          )}
+          {error && <p role="alert" className="text-red-600 dark:text-red-400">{error}</p>}
+        </>
+      ) : (
+        <PacketPanel
+          kind="approach-check"
+          slug={props.slug}
+          sessionId={props.sessionId ?? undefined}
+          getApproach={() => approachRef.current}
+          title="Check it with any chatbot"
+          description="No AI provider is configured. Copy this prompt into claude.ai or another assistant; paste the verdict back to keep it with this attempt."
+          pasteLabel="Paste the verdict"
+          onPasted={(_r, p) => props.onSession(p.sessionId)}
+        />
       )}
     </div>
   );

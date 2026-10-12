@@ -1,9 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
-import { CONTENT, allProblems, recordResponses, reference, selectLanguage, setCode, slugForTitle, submit, titleOf, verdict, waitForEditor } from "./helpers";
+import { CONTENT, allProblems, hintsOf, recordResponses, resetData, reference, selectLanguage, setCode, slugForTitle, submit, titleOf, verdict, waitForEditor } from "./helpers";
 
 const NEEDS_FRESH_DB_NOTE = "uses the real judge";
+
+test.beforeAll(async ({ request }) => {
+  await resetData(request);
+});
 
 test.describe("problem browser", () => {
   test("lists every problem and filters by difficulty, topic and search", async ({ page }) => {
@@ -134,8 +138,8 @@ test.describe("hidden tests, hints and the editorial", () => {
     const hidden = JSON.parse(fs.readFileSync(path.join(dir, "tests/hidden.json"), "utf8")) as { input: unknown; expected: unknown }[];
     const hiddenSnippets = hidden.map((h) => JSON.stringify(h.input)).filter((s) => s.length > 200).map((s) => s.slice(0, 120));
     expect(hiddenSnippets.length).toBeGreaterThan(0);
-    const yaml = fs.readFileSync(path.join(dir, "problem.yaml"), "utf8");
-    const hintSnippets = [...yaml.matchAll(/^ {2}- "(.{40,})"$/gm)].map((m) => m[1]!.slice(0, 60));
+    const hintSnippets = hintsOf(slug).map((h) => h.slice(0, 60));
+    expect(hintSnippets).toHaveLength(4);
     const editorialSnippet = fs.readFileSync(path.join(dir, "editorial.md"), "utf8").split("\n").find((l) => l.length > 60)!.slice(0, 60);
     const referenceSnippet = "seen.get(target - x, 0)";
 

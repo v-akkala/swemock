@@ -91,6 +91,21 @@ only in `apps/web/src/server/dsa/service.ts` and leaves it only through delibera
 `apps/web/e2e/dsa.spec.ts` scans every response body during a session for hidden inputs, unrevealed hints,
 the editorial and reference code. The same private/public split is what the spec's debrief (M3) builds on.
 
+## AI providers and API keys
+
+- API keys are encrypted at rest with AES-256-GCM. The master key is generated on first use into the
+  data volume (`/data/master.key`, mode 0600). Keys are never logged and never returned to the browser;
+  the UI shows `••••••••` plus the last four characters.
+- Model calls run only on the server. The only outbound traffic is to the provider you configure (and
+  nothing at all with provider `none` or a local Ollama).
+- During a round the AI interviewer has the hidden reference material in its prompt. Its output passes a
+  server-side **leak filter** before reaching the browser: 8-token shingles of the reference solutions,
+  10-word shingles of the editorial and later hints, and (in interview mode) any code block longer than
+  three lines. Replies are streamed with a 160-character look-behind and nothing inside an open code fence
+  is released, so text is checked before it leaves the server. A blocked reply is replaced and logged.
+- `SWEMOCK_TEST_MODE=1` enables a deterministic fake provider and a data-reset endpoint for end-to-end
+  tests. It is off by default and must not be set on a stack you use.
+
 ## Web app
 
 - Published on `127.0.0.1` only.

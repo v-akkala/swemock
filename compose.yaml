@@ -72,6 +72,24 @@ services:
     environment:
       SWEMOCK_ALLOWED_HOSTS: ${SWEMOCK_ALLOWED_HOSTS:-}
       SWEMOCK_RUNNER_URL: http://runner:8787
+      # Optional overrides of the AI settings (spec §2.2); empty means "use Settings".
+      SWEMOCK_PROVIDER: ${SWEMOCK_PROVIDER:-}
+      SWEMOCK_MODEL_INTERVIEWER: ${SWEMOCK_MODEL_INTERVIEWER:-}
+      SWEMOCK_MODEL_ASSISTANT: ${SWEMOCK_MODEL_ASSISTANT:-}
+      SWEMOCK_MODEL_GRADER: ${SWEMOCK_MODEL_GRADER:-}
+      SWEMOCK_MODEL_FAST: ${SWEMOCK_MODEL_FAST:-}
+      # Tests only: allows the deterministic fake AI provider and the e2e data-reset endpoint.
+      SWEMOCK_TEST_MODE: ${SWEMOCK_TEST_MODE:-}
+
+  # Optional local models: `docker compose --profile local-ai up -d`, then set the Ollama URL in Settings to
+  # http://ollama:11434. On macOS prefer the native Ollama app (Docker can't use the Mac GPU).
+  ollama:
+    image: ollama/ollama:0.40.3
+    profiles: [local-ai]
+    restart: unless-stopped
+    volumes:
+      - ollama-models:/root/.ollama
+    networks: [default]
 
 networks:
   # No route out: the runner is reachable only from web.
@@ -82,3 +100,4 @@ volumes:
   swemock-data:
     name: swemock-data
   runner-secret:
+  ollama-models:

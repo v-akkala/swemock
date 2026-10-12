@@ -13,7 +13,7 @@ Spec: `spec.md` (source of truth). Plan: `PLAN.md`. Status: `PROGRESS.md`. Choic
 ## Test
 - `pnpm typecheck && pnpm lint && pnpm test && pnpm build`
 - `pnpm test:sandbox` — real containers: DSA verdicts, project runs, containment. Needs the sandbox images (`docker compose build sandbox-python sandbox-cpp`); on macOS set `DOCKER_HOST=unix://$HOME/.docker/run/docker.sock`. To test images built under other names, set `SWEMOCK_IMAGE_PREFIX` / `SWEMOCK_SANDBOX_TAG`.
-- `pnpm e2e` — Playwright against a live app (default http://localhost:3000, i.e. `docker compose up -d --build`; override with `SWEMOCK_URL`). First time: `pnpm --filter @swemock/web exec playwright install chromium`. Uses the real judge and writes to the app's database (drafts, submissions), so run it against a scratch stack, not data you care about.
+- `pnpm e2e` — Playwright against a live stack started with `SWEMOCK_TEST_MODE=1 docker compose up -d --build` (fake AI provider + `/api/test/reset`, which each spec calls first: **it wipes the app's user data**, so never point e2e at a stack you use). Override the URL with `SWEMOCK_URL`. First time: `pnpm --filter @swemock/web exec playwright install chromium`.
 - `pnpm content:validate --all` — every shipped problem against the sandbox.
 - CI (`.github/workflows/ci.yml`): checks, sandbox tests + content validation, and compose up + e2e.
 - Manual: Settings → Judge → playground (`/playground`).
@@ -22,6 +22,10 @@ Spec: `spec.md` (source of truth). Plan: `PLAN.md`. Status: `PROGRESS.md`. Choic
 `pnpm content:new dsa <slug>` → edit → `pnpm content:gen <slug>` → `pnpm content:validate <slug>` (needs Docker + sandbox images). A running app picks the new folder up within seconds (`./content` is mounted into web). Guide: `docs/adding-problems.md`; AI drafting brief: `prompts/authoring/dsa.md`. `pnpm content:validate --all` is the CI gate.
 
 ## Architecture (current)
+- AI layer (`apps/web/src/server/ai/`): `config.ts` resolves Settings + env overrides into a provider (`anthropic` via the official SDK with prompt caching and server-side refusal fallbacks; `ollama`/`openai-compatible` via fetch; `fake` in test mode). `run.ts` (`streamText`, `completeText`, `completeJson` with one repair retry) records token usage and enforces the per-session cap. `leak-filter.ts` guards interviewer and approach-check output. Keys: `server/crypto/secrets.ts`.
+- Interviews (`server/interview/`): `engine.ts` is the round state machine (phases + deadline in `sessions.state_json`, settled on every read) and the scripted driver; `llm.ts` streams the AI interviewer through the leak filter with a look-behind window and records `<<nudge>>`s as hints. Chat lives in `events` (kind `chat`). Run/submit/hints reuse `server/dsa/service.ts` with the interview session id.
+- Prompts: `prompts/interviewer/*`, `prompts/packets/*` (front matter `id`/`version`), loaded by `server/prompts/templates.ts`; `{{var}}` must all be supplied. `/prompts` in Docker.
+- Packets, grading, approach check: `server/packets.ts`. Scorecards: `server/scoring/scorecard.ts` (auto from events, self/ai stored). Rubrics and formulas: `@swemock/shared/scoring` (server-only import path so the rubric never ships to the browser). Debrief/replay data: `server/debrief.ts`.
 - Languages: **Python and C++ only**, but pluggable. Adding one = `LANGUAGES` (`packages/shared/src/judge/protocol.ts`) + codegen module (`judge/codegen/`) + runner profile (`services/runner/src/languages/`) + sandbox image (`images/sandbox-<lang>/`) + compose sandbox service.
 - `services/runner` — judge service; the only container with the Docker socket. `/healthz` (unauthenticated), `/v1/status`, `/v1/dsa`, `/v1/project` (Bearer secret from `/run/swemock/runner-secret`). Builds a JSON bundle per run (`bundles.ts`) and runs it in a locked-down sibling container (`sandbox.ts`, limits listed in SECURITY.md).
 - `images/` — sandbox images. `common/agent.py` is every image's entrypoint: reads the bundle from stdin, compiles, feeds tests to the driver (stdin lines in, fd-3 lines out), enforces time/memory/output, runs checkers, prints one JSON result. Python driver: `sandbox-python/driver.py` (generic). C++: generated `main.cpp` + precompiled `sandbox-cpp/swemock.hpp`.
@@ -47,6 +51,9 @@ Spec: `spec.md` (source of truth). Plan: `PLAN.md`. Status: `PROGRESS.md`. Choic
 - UI components are hand-written shadcn-style in `components/ui/` (Tailwind v4, CSS variables in `globals.css`).
 
 ## Gotchas
+- Import rubrics/formulas from `@swemock/shared/scoring`, never the main `@swemock/shared` index from client code (the e2e leak scan checks JS bundles too).
+- Events in the same millisecond have no defined order (ULIDs aren't monotonic within a ms); offset follow-up events by 1 ms when order matters.
+- Current Claude models reject `temperature`; the Anthropic provider never sends it.
 - Monaco 0.57 has no `editor.all`; `code-editor.tsx` imports `editor/editor.api`, `features/register.all` and the python/cpp definitions only (types shimmed in `src/types/monaco.d.ts`). Workers are bundled with `new Worker(new URL(...))`; nothing loads from a CDN.
 - The React compiler lint rules reject writing refs during render, `Date.now()` in server components, and setState in effects; update refs in an effect, compute time in non-component functions (`getOa` returns `now`).
 - A helper named `useXxx` is treated as a hook by the linter, even in tests (hence `freshTempDatabase`).

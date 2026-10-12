@@ -10,6 +10,7 @@ import { getDsa, getDsaPrivate, problemStatuses } from "../content/repo";
 import { ApiError } from "../http/errors";
 import { runDsa } from "../judge/client";
 import { maskTests, rateEfficiency, type CaseInfo } from "./mask";
+import { onAccepted, settleInterview } from "../interview/engine";
 import { parseState, settleOa } from "./oa";
 import { recordAttempt } from "./srs";
 import {
@@ -47,6 +48,13 @@ function resolveSession(slug: string, sessionId: string | undefined): Resolved {
     session = settleOa(session);
     if (!parseState(session).slugs.includes(slug)) throw new ApiError(400, "That problem isn't part of this assessment.");
     if (session.status !== "active") throw new ApiError(409, "Time is up: this assessment has ended.");
+    return { problem, session };
+  }
+
+  if (session?.mode === "interview") {
+    session = settleInterview(session.id).session;
+    if (session.itemId !== problem.id) throw new ApiError(400, "That problem isn't part of this interview.");
+    if (session.status !== "active") throw new ApiError(409, "This interview has ended.");
     return { problem, session };
   }
 
@@ -146,7 +154,8 @@ export async function submitCode(req: CodeRequest): Promise<RunResponse> {
     tests.push({ id: t.id, input: t.input, expected: t.expected });
   });
 
-  const isOa = session.mode === "oa";
+  // OA and interviews run every test: partial credit and scoring need the share passed.
+  const isOa = session.mode !== "practice";
   const result = await runDsa({
     language: req.language,
     code: req.code,
@@ -186,9 +195,11 @@ export async function submitCode(req: CodeRequest): Promise<RunResponse> {
     verdict: response.verdict,
     passed: response.passed,
     total: response.total,
+    efficiency: response.efficiency?.rating ?? null,
   });
 
-  if (solved && !isOa) {
+  if (solved && session.mode === "interview") onAccepted(session.id);
+  if (solved && session.mode === "practice") {
     // Solving ends the practice session. Needing help (hints, the editorial, or several wrong tries)
     // puts the problem on the spaced-repetition schedule; a clean solve advances an existing card.
     const helped = sessionEvents(session.id, "hint").length > 0;
@@ -207,11 +218,12 @@ const SNAPSHOT_EVERY_MS = 30_000;
 export function saveCode(req: { slug: string; language: Language; code: string; sessionId?: string }, now = Date.now()): void {
   const problem = requireProblem(req.slug);
   const existing = req.sessionId ? getSession(req.sessionId) : null;
-  if (existing?.mode === "oa") {
-    const oa = settleOa(existing, now);
-    if (oa.status !== "active") throw new ApiError(409, "Time is up: this assessment has ended.");
-    saveDraft(problem.id, req.language, req.code, oa.id, now);
-    snapshot(oa.id, req.slug, req.language, req.code, now);
+  if (existing?.mode === "oa" || existing?.mode === "interview") {
+    const timed = existing.mode === "oa" ? settleOa(existing, now) : settleInterview(existing.id, now).session;
+    if (timed.status !== "active") throw new ApiError(409, "Time is up: this session has ended.");
+    if (timed.itemId && timed.itemId !== problem.id) throw new ApiError(400, "That problem isn't part of this session.");
+    saveDraft(problem.id, req.language, req.code, timed.id, now);
+    snapshot(timed.id, req.slug, req.language, req.code, now);
     return;
   }
   saveDraft(problem.id, req.language, req.code, null, now);
@@ -224,9 +236,13 @@ function snapshot(sessionId: string, slug: string, language: Language, code: str
   if (!last || now - last.ts >= SNAPSHOT_EVERY_MS) addEvent(sessionId, "code_snapshot", { slug, language, code }, now);
 }
 
-function practiceSession(slug: string, sessionId: string | undefined): Resolved {
+function practiceSession(slug: string, sessionId: string | undefined, what: "hint" | "editorial" = "editorial"): Resolved {
   const resolved = resolveSession(slug, sessionId);
   if (resolved.session.mode === "oa") throw new ApiError(403, "Hints and the editorial aren't available during an assessment.");
+  // Interviews allow hints (logged; they lower the score) but keep the editorial for the debrief.
+  if (resolved.session.mode === "interview" && what === "editorial") {
+    throw new ApiError(403, "The editorial is shown in the debrief, after the interview.");
+  }
   return resolved;
 }
 
@@ -240,7 +256,7 @@ export function isSolved(itemId: string): boolean {
 
 /** Hint levels 1–4. Each level needs the previous one first (unless the problem is already solved). */
 export function revealHint(req: { slug: string; level: number; sessionId?: string }): HintPayload {
-  const { problem, session } = practiceSession(req.slug, req.sessionId);
+  const { problem, session } = practiceSession(req.slug, req.sessionId, "hint");
   const priv = getDsaPrivate(req.slug)!;
   if (req.level < 1 || req.level > priv.hints.length) throw new ApiError(400, "No such hint level.");
   const seen = revealedLevels(session);
@@ -248,7 +264,7 @@ export function revealHint(req: { slug: string; level: number; sessionId?: strin
     if (req.level > 1 && !seen.has(req.level - 1) && !isSolved(problem.id)) {
       throw new ApiError(409, `Reveal hint ${req.level - 1} first.`);
     }
-    addEvent(session.id, "hint", { slug: req.slug, level: req.level });
+    addEvent(session.id, "hint", { slug: req.slug, level: req.level, penalized: session.mode === "interview" });
   }
   return { sessionId: session.id, level: req.level, text: priv.hints[req.level - 1]! };
 }

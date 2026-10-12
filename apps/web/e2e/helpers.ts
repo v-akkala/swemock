@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { expect, type Page } from "@playwright/test";
+import { expect, type APIRequestContext, type Page } from "@playwright/test";
 
 export const CONTENT = path.resolve(import.meta.dirname, "../../../content/dsa");
 
@@ -30,6 +30,19 @@ export function allProblems(): ProblemInfo[] {
         tags: field("tags").replace(/[[\]]/g, "").split(",").map((t) => t.trim()),
       };
     });
+}
+
+/** The four hint texts from problem.yaml (only the `hints:` block, not the follow-ups). */
+export function hintsOf(slug: string): string[] {
+  const yaml = fs.readFileSync(path.join(CONTENT, slug, "problem.yaml"), "utf8");
+  const block = /^hints:\n((?: {2}- .*\n)+)/m.exec(yaml)?.[1] ?? "";
+  return [...block.matchAll(/^ {2}- "(.*)"$/gm)].map((m) => m[1]!);
+}
+
+/** Wipes user data on the server (test mode only), so a spec doesn't depend on earlier runs. */
+export async function resetData(request: APIRequestContext): Promise<void> {
+  const res = await request.post("/api/test/reset", { data: {} });
+  if (!res.ok()) throw new Error(`Reset failed (is the stack running with SWEMOCK_TEST_MODE=1?): ${await res.text()}`);
 }
 
 export function titleOf(slug: string): string {
@@ -84,4 +97,33 @@ export function recordResponses(page: Page): { bodies: string[] } {
     }
   });
   return rec;
+}
+
+/** Switches the AI provider through the settings API ("fake" needs SWEMOCK_TEST_MODE=1 on the server). */
+export async function setProvider(page: Page, provider: "none" | "fake"): Promise<void> {
+  const res = await page.request.patch("/api/settings", { data: { provider, onboardingDone: true } });
+  expect(res.ok(), await res.text()).toBe(true);
+}
+
+/** Starts a mock interview from a problem page and returns its id. */
+export async function startInterview(page: Page, slug: string, interviewer: "AI interviewer" | "Scripted interviewer" | "In another chat"): Promise<string> {
+  await page.goto(`/dsa/${slug}`);
+  await page.getByTestId("open-interview").click();
+  await page.getByRole("dialog", { name: "Start a mock interview" }).getByLabel(interviewer).check();
+  await page.getByTestId("start-interview").click();
+  await page.waitForURL(/\/interview\/[A-Z0-9]+$/);
+  return page.url().split("/").pop()!;
+}
+
+/** A complete, valid grading reply for the DSA rubric, as a chatbot would paste it. */
+export function gradingReply(score = 3): string {
+  const ids = ["understanding", "algorithm", "correctness", "code_quality", "complexity", "testing", "communication"];
+  const grade = {
+    dimensions: ids.map((id) => ({ id, score, evidence: [`[02:00] evidence for ${id}`] })),
+    recommendation: "lean_hire",
+    strengths: ["Clear plan", "Tested edges", "Readable code"],
+    improvements: ["State complexity sooner", "Ask about input size", "Narrate more while coding"],
+    strong_candidate: "Would have confirmed constraints first and stated the complexity before coding.",
+  };
+  return `Overall a solid round.\n\n\`\`\`json\n${JSON.stringify(grade, null, 2)}\n\`\`\`\n`;
 }

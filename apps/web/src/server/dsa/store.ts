@@ -12,7 +12,8 @@ export type SessionRow = typeof sessions.$inferSelect;
 
 export function startSession(opts: {
   itemId?: string | null;
-  mode: "practice" | "oa";
+  mode: "practice" | "oa" | "interview";
+  driver?: "scripted" | "llm";
   state?: unknown;
   roundType?: string;
   now?: number;
@@ -25,7 +26,7 @@ export function startSession(opts: {
     roundType: opts.roundType ?? "dsa",
     itemId: opts.itemId ?? null,
     mode: opts.mode,
-    driver: "scripted" as const,
+    driver: opts.driver ?? ("scripted" as const),
     provider: readSettings(db).provider,
     loopId: null,
     status: "active" as const,

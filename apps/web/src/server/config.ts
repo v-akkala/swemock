@@ -24,3 +24,9 @@ export function contentDir(): string {
   if (process.env.SWEMOCK_CONTENT_DIR) return path.resolve(/*turbopackIgnore: true*/ process.env.SWEMOCK_CONTENT_DIR);
   return path.resolve(/*turbopackIgnore: true*/ process.cwd(), "../../content");
 }
+
+/** Versioned prompt and packet templates (`prompts/` in the repo, `/prompts` in Docker). */
+export function promptsDir(): string {
+  if (process.env.SWEMOCK_PROMPTS_DIR) return path.resolve(/*turbopackIgnore: true*/ process.env.SWEMOCK_PROMPTS_DIR);
+  return path.resolve(/*turbopackIgnore: true*/ process.cwd(), "../../prompts");
+}

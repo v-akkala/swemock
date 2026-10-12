@@ -48,8 +48,8 @@ jobs:
           node-version: 24
       - run: npm install -g pnpm@12.11.2
       - run: pnpm install --frozen-lockfile
-      - name: Build and start
-        run: docker compose up -d --build --wait --wait-timeout 180
+      - name: Build and start (test mode: fake AI provider and data reset for e2e)
+        run: SWEMOCK_TEST_MODE=1 docker compose up -d --build --wait --wait-timeout 180
       - name: Health
         run: |
           curl -fsS http://127.0.0.1:3000/api/health

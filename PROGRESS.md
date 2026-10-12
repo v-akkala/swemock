@@ -30,21 +30,36 @@
   - **Tests:** shared 21, content 6, scripts 2, runner unit 12 + sandbox 38, web 32 (masking, sync, service with a mocked judge: ladder, SRS, OA deadline, drafts/snapshots), e2e 11 (browse/filter/random/palette, solve in Python and C++, verdicts, custom input, drafts, hidden-content leak scan, hints/editorial, give up, OA, content review). `content:validate --all` passes.
   - Docs: `docs/adding-problems.md`, `prompts/authoring/dsa.md`, SECURITY.md hidden-content section, DECISIONS.md M2.
 
-## In progress
-- Nothing. Waiting for the user to test M2.
+- **M3 — AI layer and interviewer engine**
+  - Providers: `none`, `ollama`, `openai-compatible`, `anthropic` (official SDK, streaming, prompt caching, refusal fallbacks), `fake` (test mode). Models per role with documented defaults and env overrides; encrypted API keys (masked in the UI); Test connection; token usage per session with a cap.
+  - First-run `/setup` (skippable) and Settings → AI.
+  - Packets (`prompts/packets/`, versioned): live interview, grading (only after the round), approach check; copy / download / paste-back with JSON extraction and Zod validation; every copy, download, and paste logged.
+  - Round state machine with server-side phase timers; scripted interviewer (`prompts/interviewer/dsa-scripted.md`, problem follow-ups after a solve); AI interviewer with per-turn context, SSE streaming, leak post-filter with look-behind, nudge logging; fallback to scripted or copy-prompt on AI failure; "interview in another chat" mode.
+  - DSA interview mode (`/interview/[id]`): strict 50-minute clock, phases, chat, hints logged and penalized, no editorial until the debrief.
+  - Scoring (`packages/shared/src/scoring`, formula v1, docs/scoring.md): auto from events, self checklist, AI grade (connected or pasted); recommendation with hard cap.
+  - Debrief (`/debrief/[id]`): scorecard with sources, self-checklist, AI grading (button or packet), timeline replay (code + conversation at any point), editorial, reference solutions, follow-ups, Redo, Add to review queue. History (`/history`).
+  - Approach Check (practice): live verdict via the fast model, or packet + paste.
+  - Hidden-content e2e: scans every page, API response, and JS bundle during practice and during a full interview (hidden inputs, unrevealed hints, editorial, reference code, rubric, grading instructions), with positive controls.
+  - Tests: shared 32, web 58 (leak filter, providers, secrets, config, engine both drivers, packets, grading, scorecard), e2e 18 (DSA 11 + interview/AI 7), all idempotent via test-mode reset.
+  - Docs: docs/ai-setup.md, docs/scoring.md, SECURITY.md (keys, leak filter, test mode), DECISIONS.md M3.
 
-## Next: M3 — AI layer and interviewer engine
-1. Providers (`none`, `ollama`, `openai-compatible`, `anthropic`) behind `LLMProvider`, plus `FakeProvider`; look up current model IDs in each provider's docs and record them in DECISIONS.md; first-run setup page + "Test connection"; encrypted key storage (master key generated into `/data`); token usage + per-session cap.
-2. Packet templates in `prompts/packets/` (versioned), Copy prompt / Download .md / Paste reply with JSON-block extraction + Zod validation (see spec §2.4–2.5); every copy/paste logged as events (`packet_copied`, `reply_pasted`).
-3. Round state machine with server-side timers and phases; `ScriptedDriver` (uses the problems' `followups` and phase prompts) and `LLMDriver`; leak post-filter (shingle overlap against `private_json`).
-4. Scoring (auto/self/ai) and scorecard with the formulas in `packages/shared` (`formula_version`), debrief with timeline replay (events already carry code snapshots from M2), review queue, redo.
-5. DSA **interview mode** (strict timer, phases, hints logged and penalized, no editorial until debrief) and **Approach Check**; extend the hidden-content e2e test to cover every API response and page payload in a session (M2 covers the DSA practice flow).
-6. History page (`/history`) from sessions/events.
+## In progress
+- Nothing. Waiting for the user to test M3.
+
+## Next: M4 — Recruiter Screen and Behavioral
+1. Resumes: paste or PDF upload (server-side text extraction, `unpdf`), saved versions, deterministic parse into sections and bullets; target role, company, job description.
+2. Recruiter round: resume phase (scripted deep dives on bullets with numbers/strong claims, then generic recruiter questions; AI: 5–10 resume-specific questions) and CS fundamentals phase (rapid-fire from the bank with adaptive difficulty, key points revealed, self-grade). Resume feedback panel (AI or packet). Packets: live, grading, resume feedback.
+3. Behavioral round: question bank with 3–5 follow-ups each and competency tags; story bank (STAR + metrics + reflection + tags) with a competency × story coverage matrix; mock flow (4–6 questions, 1–3 follow-ups, 2–3 minute soft timer per answer); auto signals (duration, word count, I/we ratio, numbers, fillers when voice is on); stronger-version rewrite (AI or packet; never fabricate, list missing facts).
+4. Voice input flag (Web Speech API) with the vendor-processing note; WPM and filler counts.
+5. Content: CS fundamentals and behavioral schemas + validation (key points; MCQs have exactly one correct option); first batches toward 60 CS / 40 behavioral. Generalize the content loader beyond `dsa` (content types registry) and the scoring rubrics per round type.
+6. Extend the interview engine for non-coding rounds (phase plans per round type; scripted drivers from content).
 
 ## Known issues
 - None known. The company filter has no data yet (`companies: []` on all problems).
+- Ollama and real Anthropic calls are implemented and unit-tested with mocked HTTP, but weren't exercised against live services here (no Ollama install; no paid API calls by policy). Test connection in Settings checks both.
 
 ## Cut scope
 - Java and Node/TypeScript languages (user decision during M1); the runner remains pluggable.
 - Warm container pool (optional per spec) — Python runs take ~0.2 s and C++ ~0.6 s including compile.
 - Home-page dashboard for due reviews (M8); due reviews are listed on `/dsa` for now.
+- Persona/company presets for the interviewer prompt (`persona_suffix` placeholder) arrive with company presets in M8.

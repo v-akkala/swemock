@@ -1,8 +1,15 @@
 import { z } from "zod";
 
+/** Providers users can pick. */
 export const PROVIDERS = ["none", "ollama", "openai-compatible", "anthropic"] as const;
-export const providerSchema = z.enum(PROVIDERS);
+/**
+ * "fake" is the deterministic test provider (spec §2.6). The app only accepts it when the server runs
+ * with SWEMOCK_TEST_MODE=1; it never appears in the UI otherwise.
+ */
+export const providerSchema = z.enum([...PROVIDERS, "fake"]);
 export type Provider = z.infer<typeof providerSchema>;
+export type ModelProvider = Exclude<Provider, "none" | "fake">;
+export const MODEL_PROVIDERS: ModelProvider[] = ["ollama", "openai-compatible", "anthropic"];
 
 export const MODEL_ROLES = ["interviewer", "assistant", "grader", "fast"] as const;
 export const modelRoleSchema = z.enum(MODEL_ROLES);
@@ -21,6 +28,17 @@ export const roleModelsSchema = z.object({
 export type RoleModels = z.infer<typeof roleModelsSchema>;
 
 const emptyRoles: RoleModels = { interviewer: "", assistant: "", grader: "", fast: "" };
+
+/**
+ * Documented defaults per provider (docs/ai-setup.md). Anthropic: the current Opus for conversation and
+ * grading, the current Haiku for short replies. Ollama: models that run on a 16 GB machine.
+ * OpenAI-compatible endpoints vary too much to guess: the user names the models.
+ */
+export const DEFAULT_MODELS: Record<ModelProvider, RoleModels> = {
+  anthropic: { interviewer: "claude-opus-5-5", assistant: "claude-opus-5-5", grader: "claude-opus-5-5", fast: "claude-haiku-5-5" },
+  ollama: { interviewer: "qwen3.5:9b", assistant: "qwen3.5:9b", grader: "qwen3.5:9b", fast: "qwen3.5:4b" },
+  "openai-compatible": { ...emptyRoles },
+};
 
 export const featureFlagsSchema = z.object({
   voiceInput: z.boolean(),

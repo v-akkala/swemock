@@ -15,7 +15,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/ml", label: "ML", description: "System design, serving, training, fundamentals, applied.", milestone: "M7" },
   { href: "/loops", label: "Mock Loops", description: "Chain rounds into a full loop with a committee packet.", milestone: "M8" },
   { href: "/analytics", label: "Analytics", description: "Score trends and weak spots.", milestone: "M8" },
-  { href: "/history", label: "History", description: "Every session with full replay.", milestone: "M3" },
+  { href: "/history", label: "History", description: "Every session with full replay." },
 ];
 
 export function findNavItem(slug: string): NavItem | undefined {

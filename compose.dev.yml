@@ -41,6 +41,8 @@ services:
       WATCHPACK_POLLING: "true"
       SWEMOCK_RUNNER_URL: http://runner:8787
       SWEMOCK_CONTENT_DIR: /repo/content
+      SWEMOCK_PROMPTS_DIR: /repo/prompts
+      SWEMOCK_TEST_MODE: ${SWEMOCK_TEST_MODE:-}
 
 networks:
   internal:

@@ -11,6 +11,7 @@ export function freshTempDatabase(): string {
   process.env.SWEMOCK_DATA_DIR = dir;
   process.env.SWEMOCK_MIGRATIONS_DIR = path.resolve(import.meta.dirname, "../../drizzle");
   process.env.SWEMOCK_CONTENT_DIR = path.resolve(import.meta.dirname, "../../../../content");
+  process.env.SWEMOCK_PROMPTS_DIR = path.resolve(import.meta.dirname, "../../../../prompts");
   const g = globalThis as unknown as Record<string, unknown>;
   delete g.__swemockDb;
   delete g.__swemockContent;

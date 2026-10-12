@@ -14,7 +14,13 @@ export default defineConfig({
   use: {
     baseURL: process.env.SWEMOCK_URL ?? "http://localhost:3000",
     trace: "retain-on-failure",
+    permissions: ["clipboard-read", "clipboard-write"],
     viewport: { width: 1400, height: 900 },
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"], viewport: { width: 1400, height: 900 } } }],
+  projects: [
+    {
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1400, height: 900 }, permissions: ["clipboard-read", "clipboard-write"] },
+    },
+  ],
 });

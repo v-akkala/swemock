@@ -1,8 +1,15 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getDb } from "@/server/db";
+import { readSettings } from "@/server/settings";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { NAV_ITEMS } from "@/lib/nav";
 
+export const dynamic = "force-dynamic";
+
 export default function Home() {
+  // First run: offer AI setup once (it can be skipped).
+  if (!readSettings(getDb()).onboardingDone) redirect("/setup");
   return (
     <div className="space-y-8">
       <section>

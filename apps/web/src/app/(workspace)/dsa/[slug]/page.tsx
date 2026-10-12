@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CODEGEN, LANGUAGES, LANGUAGE_LABELS } from "@swemock/shared";
 import { ProblemWorkspace } from "@/components/dsa/workspace";
+import { StartInterview } from "@/components/interview/start-interview";
+import { resolveAi } from "@/server/ai/config";
 import { loadProblemPage } from "@/server/dsa/service";
 import { loadDrafts } from "@/server/dsa/store";
 
@@ -17,14 +19,16 @@ export default async function ProblemPage({ params }: { params: Promise<{ slug: 
   const data = loadProblemPage(slug);
   if (!data) notFound();
   const drafts = loadDrafts(data.itemId, null);
+  const aiConnected = resolveAi().connected;
   const { pub } = data;
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-border shrink-0 border-b px-4 py-1.5 text-sm">
+      <div className="border-border flex shrink-0 items-center justify-between border-b px-4 py-1 text-sm">
         <Link href="/dsa" className="text-muted-foreground hover:underline">
           ← All problems
         </Link>
+        <StartInterview slug={slug} aiConnected={aiConnected} />
       </div>
       <div className="min-h-0 flex-1">
         <ProblemWorkspace
@@ -43,6 +47,7 @@ export default async function ProblemPage({ params }: { params: Promise<{ slug: 
           }))}
           samples={pub.visibleTests.map((t, i) => ({ id: t.id, label: `Sample ${i + 1}`, input: t.input }))}
           mode="practice"
+          aiConnected={aiConnected}
           sessionId={data.sessionId}
           solved={data.solved}
           hintCount={pub.hintCount}
