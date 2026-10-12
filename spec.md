@@ -204,7 +204,7 @@ Blend the LLM scores with objective signals: tests passed, time to first correct
 **Extra output:** a "Resume feedback" panel listing the bullets that drew hard follow-ups or that I couldn't back up, with suggested rewrites.
 
 ### 6.2 DSA
-**Problem bank.** Seed at least 75 problems, about 25% easy, 55% medium, and 20% hard. Topics:
+**Problem bank.** Seed at least 150 problems, about 25% easy, 55% medium, and 20% hard. Topics:
 - arrays and hashing, two pointers, sliding window, prefix sums
 - stack and monotonic stack
 - binary search, including binary search on the answer
@@ -572,4 +572,42 @@ Update spec.md so the app runs with zero paid API usage:
 - Update PLAN.md and DECISIONS.md to match.
 
 
+Update SPEC.md, PLAN.md, and DECISIONS.md: this will be a public GitHub repo anyone can clone and run locally for free. Add a "Public distribution" section:
 
+1. One-command install
+- Host requirements: Docker Desktop (or Docker Engine) and git only. No Node, Python, compilers, or API keys needed on the host.
+- Install: `git clone <repo> && cd <repo> && docker compose up -d`, then open http://localhost:3000.
+- Must work on macOS (Intel and Apple Silicon), Windows (WSL2), and Linux. Build multi-arch images (amd64 + arm64).
+- GitHub Actions publishes prebuilt images to GitHub Container Registry on each tagged release, so users pull instead of build. Keep a separate compose.dev.yml for contributors that builds from source.
+- Keep downloads small: slim base images. Language runners are compose profiles: Python + C++ by default, Java and JS opt-in. The UI shows which languages are installed.
+
+2. Zero-cost by default
+- Fully usable with AI provider "none". A first-run setup page offers: none / Ollama / your own API key. Keys are stored only in the local data volume, never logged.
+- Optional `--profile local-ai` starts an Ollama container. On macOS, recommend the native Ollama app instead, since Docker can't use the Mac GPU; the app reaches it via host.docker.internal. Document RAM needs.
+- No telemetry or analytics. No outbound network calls except to the AI provider the user chose.
+
+3. Data and updates
+- SQLite lives in a named Docker volume so data survives restarts and updates.
+- Migrations run automatically on startup, with an automatic DB backup first. Never destroy user data on upgrade.
+- Document updating: `git pull && docker compose pull && docker compose up -d`.
+
+4. Security
+- Bind all ports to 127.0.0.1. Single-user, local only; no hosted or multi-user mode.
+- Prefer a sandbox design that doesn't mount the host Docker socket. If the runner needs it, restrict it to the runner service, never expose the runner's port, and explain the tradeoff in SECURITY.md.
+- Sandbox containment tests run in CI.
+
+5. Repo hygiene
+- README covers:
+  - what the app is, with screenshots or a GIF
+  - requirements and quickstart
+  - AI setup options and how to update
+  - troubleshooting: Docker not running, port in use, Apple Silicon, WSL2
+  - how to add content
+- Add: LICENSE (MIT), CONTRIBUTING.md (adding problems, running content:validate), SECURITY.md, CHANGELOG.md, issue and PR templates, .gitattributes (LF line endings), and .env.example with placeholder values only.
+- All content must be original. Company presets are labeled as unofficial approximations, with no company logos.
+- CI on every PR: typecheck, lint, unit tests, content:validate, sandbox tests, and an e2e smoke test that runs `docker compose up` on a clean Ubuntu runner and completes one DSA submission.
+- Semantic versioning with GitHub Releases.
+
+6. Milestones
+- Keep `docker compose up` working from M0 onward.
+- Add M10 "Public release": everything above, plus a fresh-machine install that follows only the README.
