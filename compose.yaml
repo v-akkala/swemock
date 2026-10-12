@@ -1,0 +1,27 @@
+# swemock — `docker compose up -d`, then open http://localhost:3000
+#
+# Until v1.0.0 is published to GHCR this file builds the image locally (pull_policy: build).
+# From v1.0.0 on it pulls prebuilt multi-arch images pinned to the release version.
+name: swemock
+
+services:
+  web:
+    image: ghcr.io/v-akkala/swemock-web:${SWEMOCK_VERSION:-0.1.0}
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: runtime
+    pull_policy: build
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${SWEMOCK_PORT:-3000}:3000"
+    volumes:
+      - swemock-data:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      SWEMOCK_ALLOWED_HOSTS: ${SWEMOCK_ALLOWED_HOSTS:-}
+
+volumes:
+  swemock-data:
+    name: swemock-data

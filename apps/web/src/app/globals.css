@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-ring: var(--ring);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --card: #fafafa;
+  --muted: #f1f1f3;
+  --muted-foreground: #5c5c66;
+  --border: #e3e3e8;
+  --primary: #2b59c3;
+  --primary-foreground: #ffffff;
+  --ring: #2b59c3;
+}
+
+.dark {
+  --background: #0d0e11;
+  --foreground: #ececf1;
+  --card: #15171c;
+  --muted: #1e2128;
+  --muted-foreground: #9a9aa6;
+  --border: #2a2d35;
+  --primary: #6b8ff0;
+  --primary-foreground: #0d0e11;
+  --ring: #6b8ff0;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

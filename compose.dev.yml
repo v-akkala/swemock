@@ -1,0 +1,31 @@
+# Contributors: `docker compose -f compose.dev.yml up` — builds from source with hot reload.
+# Uses its own data volume so development never touches your real swemock data.
+name: swemock-dev
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: dev
+    ports:
+      - "127.0.0.1:${SWEMOCK_PORT:-3000}:3000"
+    volumes:
+      - .:/repo
+      # Linux node_modules live in volumes, separate from the host's.
+      - dev-node-modules:/repo/node_modules
+      - dev-web-node-modules:/repo/apps/web/node_modules
+      - dev-shared-node-modules:/repo/packages/shared/node_modules
+      - dev-next:/repo/apps/web/.next
+      - swemock-dev-data:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      WATCHPACK_POLLING: "true"
+
+volumes:
+  dev-node-modules:
+  dev-web-node-modules:
+  dev-shared-node-modules:
+  dev-next:
+  swemock-dev-data:

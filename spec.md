@@ -284,28 +284,29 @@ Pick one and explain the choice in both DECISIONS.md and SECURITY.md. If you cho
   - Every question has key points, and MCQs have exactly one correct option.
   - Every design prompt has a rubric containing must-hit points, strong signals, and red flags.
 
-### 6.3 Content targets (reached by M9)
+### 6.3 Content targets (v1.0, reached by M9)
 
-| Content | Target |
-| --- | --- |
-| DSA problems | 50 (about 25% easy, 55% medium, 20% hard) |
-| CS fundamentals questions | 150 |
-| LLD problems | 20 |
-| AI Fluency: comprehension codebases | 10 |
-| AI Fluency: review PRs | 15 |
-| AI Fluency: feature-extension repos | 7 |
-| Behavioral questions | 80, each with 3–5 authored follow-ups |
-| ML system design prompts | 12 |
-| ML serving prompts | 8 |
-| ML distributed training prompts | 8 |
-| ML applied design prompts | 10 |
-| ML fundamentals questions | 200, mixed MCQ and short answer |
-| Company presets | 6 |
-| Loop presets | 7 |
+| Content | v1.0 target | Later releases |
+| --- | --- | --- |
+| DSA problems | 50 (about 25% easy, 55% medium, 20% hard) | |
+| CS fundamentals questions | 60 | 150 |
+| LLD problems | 12 | 20 |
+| AI Fluency: comprehension codebases | 6 | 10 |
+| AI Fluency: review PRs | 8 | 15 |
+| AI Fluency: feature-extension repos | 4 | 7 |
+| Behavioral questions | 40, each with 3–5 authored follow-ups | 80 |
+| ML system design prompts | 12 | |
+| ML serving prompts | 8 | |
+| ML distributed training prompts | 8 | |
+| ML applied design prompts | 10 | |
+| ML fundamentals questions | 80, mixed MCQ and short answer | 200 |
+| Company presets | 6 | |
+| Loop presets | 7 | |
 
 ### 6.4 Authoring
 - You (Claude Code) author all content during development. No API calls are involved.
 - Work in batches of about 10 items. Run `content:validate` after each batch, and commit each batch separately.
+- Adding content, above all DSA problems, will happen often, so it must be very easy: one scaffold command, one folder per item, no code changes elsewhere, fast single-item validation, and automatic pickup by the running app.
 - `pnpm content:new <type> <slug>` scaffolds a new item.
 - `prompts/authoring/<type>.md` contains guides that contributors can hand to their own AI tool to draft new items. Every drafted item still has to pass validation.
 - **Originality:**
@@ -985,8 +986,3 @@ Keep `docker compose up` working from M0 onward.
   - CI is green
   - the no-outbound-network smoke test passes
 - **Release:** the v1.0.0 release is published with GHCR images, and the README quickstart works exactly as written.
-
-
-Please make it really easy to add more problems to the problem bank because that is an update that is going to happen frequently
-
-Update spec.md §6.3 v1.0 targets: CS fundamentals 60, behavioral 40, ML fundamentals 80, LLD 12, review PRs 8, comprehension codebases 6, feature-extension repos 4. Larger targets move to later releases.
