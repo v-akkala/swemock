@@ -560,3 +560,16 @@ Version every prompt template so I can compare grading across versions.
 - All content passes `content:validate`, and all unit and e2e tests pass.
 - I can complete every round type in both modes and get a scorecard with evidence.
 - All sandbox containment tests pass, and the no-hidden-content-leak test passes.
+
+
+
+Update spec.md so the app runs with zero paid API usage:
+- LLM features are optional. Providers: "none" (default), "ollama" (local, OpenAI-compatible endpoint), "anthropic" (optional, off by default).
+- With provider "none", every AI feature shows a "Copy prompt for Claude" button that copies a self-contained prompt (problem, my code/transcript/annotations, rubric) for claude.ai, plus a box to paste the reply back into the session.
+- Grade deterministically wherever possible: tests, bug/issue recall and precision by line range, MCQ answers.
+- Design and behavioral rounds: after the round, reveal the hidden rubric as a self-scoring checklist.
+- Drop content:generate's API dependency. You (Claude Code) author all content during development, checked by content:validate.
+- Update PLAN.md and DECISIONS.md to match.
+
+
+
