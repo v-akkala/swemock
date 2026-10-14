@@ -1,0 +1,14 @@
+classDiagram
+  class KVStore {
+    -data: Map~String, Value~
+    -overlays: List~Map~
+    +set(key, value)
+    +get(key) Value
+    +delete(key) bool
+    +begin()
+    +commit()
+    +rollback()
+    +depth() int
+  }
+  class Tombstone
+  KVStore ..> Tombstone : marks deletions

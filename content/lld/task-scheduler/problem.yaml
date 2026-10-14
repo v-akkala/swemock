@@ -1,0 +1,25 @@
+title: Task Scheduler
+difficulty: hard
+tags: [scheduling, data-structures]
+source: authored
+reviewed: false
+version: 1
+format: class
+minutes: 60
+
+languages:
+  python:
+    files:
+      - { path: scheduler.py, role: solution }
+  cpp:
+    files:
+      - { path: scheduler.hpp, role: solution }
+
+hints:
+  - "A task can be in one of a few states. Which transitions does each public method cause, and which states does a caller get to observe?"
+  - "Think about what makes a task ready: all of its dependencies are done. Rather than rechecking every task on each call, count what is still missing for each task."
+  - "Keep, per task, the number of unfinished dependencies, plus the reverse edges (who depends on me). Completing a task decrements its dependents' counters; at zero they become ready."
+  - "Ready tasks go in a priority queue ordered by (-priority, insertion number) so that the highest priority wins and ties are first-come first-served. `next_task` pops and marks the task running."
+followups:
+  - How would you detect and report a dependency cycle if tasks could be added before their dependencies?
+  - How would you run tasks on several workers, and what has to be thread-safe?

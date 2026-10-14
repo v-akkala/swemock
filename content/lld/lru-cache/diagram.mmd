@@ -1,0 +1,18 @@
+classDiagram
+  class LRUCache {
+    -capacity: int
+    -index: Map~Key, Node~
+    -head: Node
+    -tail: Node
+    +get(key) Value
+    +put(key, value)
+    +size() int
+    +keys() List
+  }
+  class Node {
+    +key
+    +value
+    +prev: Node
+    +next: Node
+  }
+  LRUCache "1" o-- "*" Node : orders

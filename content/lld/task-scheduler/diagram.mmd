@@ -1,0 +1,26 @@
+classDiagram
+  class TaskScheduler {
+    -tasks: Map~String, TaskRecord~
+    -dependents: Map~String, List~String~~
+    -ready: Heap
+    -sequence: int
+    +add(id, priority, depends_on)
+    +next_task() String
+    +complete(id)
+    +status(id) String
+  }
+  class TaskRecord {
+    +priority: int
+    +state: State
+    +missing: int
+    +sequence: int
+  }
+  class State {
+    <<enumeration>>
+    WAITING
+    READY
+    RUNNING
+    DONE
+  }
+  TaskScheduler "1" o-- "*" TaskRecord
+  TaskRecord --> State

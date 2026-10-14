@@ -1,0 +1,1 @@
+Add `count(value)`: it returns how many keys currently hold exactly that value, as seen from inside the current transaction (so pending sets, overwrites and deletes are included, and a rollback restores the previous counts). Keys that are deleted do not count, and a key overwritten with a different value counts only for its new value.

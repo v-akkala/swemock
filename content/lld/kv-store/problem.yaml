@@ -1,0 +1,25 @@
+title: Key-Value Store with Transactions
+difficulty: medium
+tags: [transactions, data-structures]
+source: authored
+reviewed: false
+version: 1
+format: class
+minutes: 45
+
+languages:
+  python:
+    files:
+      - { path: kv_store.py, role: solution }
+  cpp:
+    files:
+      - { path: kv_store.hpp, role: solution }
+
+hints:
+  - "What does `rollback` need in order to undo a change? Does it have to remember every old value, or is there a cheaper way to keep the changes separate?"
+  - "Don't edit the real data inside a transaction: record the changes somewhere else and decide at commit or rollback time what happens to them."
+  - "Keep a stack with one layer of pending changes per open transaction. Reads look from the top layer down to the base data; writes go to the top layer. A deletion is a change too: record it as a marker."
+  - "commit pops the top layer and merges it into the layer below (or into the base data if it was the last one); rollback just pops it. Use a sentinel object for deletions so that None can still be a stored value."
+followups:
+  - How would you make `count(value)` O(1) instead of scanning every key?
+  - How would this change if several clients, each with their own transactions, shared the store?

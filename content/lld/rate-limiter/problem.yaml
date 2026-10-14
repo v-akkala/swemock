@@ -1,0 +1,25 @@
+title: Rate Limiter
+difficulty: medium
+tags: [rate-limiting, extensibility]
+source: authored
+reviewed: false
+version: 1
+format: class
+minutes: 45
+
+languages:
+  python:
+    files:
+      - { path: rate_limiter.py, role: solution }
+  cpp:
+    files:
+      - { path: rate_limiter.hpp, role: solution }
+
+hints:
+  - "What has to be remembered per key so that a request can be judged later, and what should not be stored at all?"
+  - "You don't need a timer or a background thread: compute what happened since the last request when the next request arrives."
+  - "Store, per key, the number of tokens and the time you last updated it. On each request add elapsed * rate tokens, cap at capacity, then try to spend `cost`."
+  - "Create a key's bucket lazily, full. Never let a denied request spend tokens, and never let a backwards clock add them (use max(0, now - last))."
+followups:
+  - How would a sliding-window log limiter differ in behavior and memory from this token bucket?
+  - What would you change to share these limits between several servers?

@@ -1,0 +1,25 @@
+title: LRU Cache
+difficulty: easy
+tags: [caching, data-structures]
+source: authored
+reviewed: false
+version: 1
+format: class
+minutes: 45
+
+languages:
+  python:
+    files:
+      - { path: lru_cache.py, role: solution }
+  cpp:
+    files:
+      - { path: lru_cache.hpp, role: solution }
+
+hints:
+  - "Which two operations must be O(1), and what does each one need to know about the entries?"
+  - "A hash map finds an entry in O(1). What structure lets you move an entry to the front and drop the back, also in O(1)?"
+  - "Pair a hash map from key to node with a doubly linked list ordered from most to least recently used. get and put both move the node to the front; put on a full cache removes the tail."
+  - "Python: collections.OrderedDict does the pairing for you (move_to_end, popitem(last=False)). Otherwise write the list with sentinel head and tail nodes so no operation special-cases an empty list."
+followups:
+  - How would you make this cache safe to use from several threads, and what would the lock cover?
+  - How would you change it to evict by least frequently used instead, and what gets harder?

@@ -1,0 +1,14 @@
+classDiagram
+  class RateLimiter {
+    -capacity: float
+    -refill_per_second: float
+    -clock: Callable
+    -buckets: Map~String, Bucket~
+    +allow(key, cost) bool
+    +tokens(key) float
+  }
+  class Bucket {
+    +tokens: float
+    +last_update: float
+  }
+  RateLimiter "1" o-- "*" Bucket : one per key
