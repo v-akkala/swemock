@@ -1,0 +1,16 @@
+classDiagram
+  class Ledger {
+    -balances: Map~String, int~
+    +add_expense(payer, amount, participants)
+    +balance(user) int
+    +balances() Map
+    +settle(payer, receiver, amount)
+    +simplify() List
+  }
+  class money {
+    <<module>>
+    +split_evenly(total, n) List
+    +format_cents(c) str
+    LedgerError
+  }
+  Ledger ..> money : uses

@@ -1,0 +1,23 @@
+title: Expense Splitter
+difficulty: hard
+tags: [finance, extensibility]
+source: authored
+reviewed: false
+version: 1
+format: system
+minutes: 60
+
+languages:
+  python:
+    files:
+      - { path: money.py, role: provided }
+      - { path: ledger.py, role: solution }
+
+hints:
+  - "What is the one number per person that answers every question the ledger will be asked? Think about what an expense, a settlement, and a simplification each change about it."
+  - "Money is in whole cents, and `money.py` already has the one tricky function: `split_evenly` shares a total among n people without losing a cent. Use it."
+  - "Store a single signed balance per user (positive: owed money, negative: owes). An expense adds the full amount to the payer and subtracts each person's share; a settlement moves a balance from one user to another. The balances always sum to zero."
+  - "`simplify` doesn't need the history, only the balances: repeatedly match the person who owes the most with the person who is owed the most, transfer the smaller of the two amounts, and continue. Break ties by name so the output is deterministic."
+followups:
+  - How would you keep an audit trail of every expense and settlement, and where does it live?
+  - Is the greedy simplification optimal in the number of transfers? What would an optimal one involve?

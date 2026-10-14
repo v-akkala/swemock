@@ -1,0 +1,29 @@
+classDiagram
+  class Message {
+    +id: int
+    +topic: str
+    +payload
+    +timestamp: float
+  }
+  class Failure {
+    +message_id: int
+    +subscription_id: int
+    +error: str
+  }
+  class Broker {
+    -subscriptions: List~Subscription~
+    -queue: Deque~Message~
+    -failures: List~Failure~
+    +subscribe(topic, handler) int
+    +unsubscribe(id)
+    +publish(topic, payload) Message
+    +failures() List
+  }
+  class Subscription {
+    +id: int
+    +topic: str
+    +handler
+  }
+  Broker "1" o-- "*" Subscription
+  Broker ..> Message : delivers
+  Broker ..> Failure : records

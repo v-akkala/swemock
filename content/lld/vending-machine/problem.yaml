@@ -1,0 +1,23 @@
+title: Vending Machine
+difficulty: medium
+tags: [state-pattern, finance]
+source: authored
+reviewed: false
+version: 1
+format: system
+minutes: 45
+
+languages:
+  python:
+    files:
+      - { path: catalog.py, role: provided }
+      - { path: machine.py, role: solution }
+
+hints:
+  - "What does the machine behave differently about depending on what happened before? Write down the situations (for example: nothing inserted yet, money inserted) and what each public method does in each."
+  - "`catalog.py` already has the coins, the products, the stock, and the errors. Your machine adds behavior on top of them; don't copy their logic."
+  - "Keep the coins inserted so far as a multiset (a count per coin). The balance is derived from it, and `cancel` must hand back exactly those coins."
+  - "On a successful `select`: validate everything first (known product, in stock, enough money), then change the stock and the balance in one step. Compute change with the largest coin first."
+followups:
+  - How would you add card payments without changing the selection logic?
+  - What would a state-pattern version of this machine look like, and when is it worth it?

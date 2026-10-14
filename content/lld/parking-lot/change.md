@@ -1,0 +1,1 @@
+The lot now supports monthly passes. `add_pass(plate)` registers a plate as a pass holder (it can be called while that vehicle is already parked). A pass holder pays nothing: `unpark` returns 0 for it. The lot also tracks `revenue()`: the total of all fees it has charged so far (fees of 0 add nothing).

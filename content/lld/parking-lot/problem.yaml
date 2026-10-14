@@ -1,0 +1,23 @@
+title: Parking Lot
+difficulty: medium
+tags: [booking, extensibility]
+source: authored
+reviewed: false
+version: 1
+format: system
+minutes: 45
+
+languages:
+  python:
+    files:
+      - { path: models.py, role: provided }
+      - { path: parking_lot.py, role: solution }
+
+hints:
+  - "Which decisions does the lot make on every `park`, and which facts does it need to remember between `park` and `unpark`?"
+  - "The provided `models.py` already defines the vehicle types, the ticket, the errors, and the hourly rates. Use them rather than redefining anything."
+  - "Keep two pieces of state: which spots are free (per spot size), and which tickets are open (ticket id to ticket). Choosing a spot is a search over sizes from the smallest that fits."
+  - "Fees are computed in `unpark` from the ticket's entry time and the injected clock: rate for the vehicle's type times the number of started hours, at least one."
+followups:
+  - How would you support several entrances parking at the same time?
+  - Where would a pricing rule that changes by time of day live in your design?

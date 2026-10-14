@@ -1,0 +1,27 @@
+classDiagram
+  class VehicleType {
+    <<enumeration>>
+    MOTORCYCLE
+    CAR
+    TRUCK
+  }
+  class Vehicle {
+    +plate: str
+    +type: VehicleType
+  }
+  class Ticket {
+    +id: int
+    +plate: str
+    +spot_id: str
+    +entered_at: float
+  }
+  class ParkingLot {
+    -free: Map~VehicleType, Heap~
+    -open: Map~int, Ticket~
+    +park(vehicle) Ticket
+    +unpark(ticket_id) int
+    +available(type) int
+  }
+  ParkingLot ..> Vehicle
+  ParkingLot ..> Ticket : issues
+  Vehicle --> VehicleType

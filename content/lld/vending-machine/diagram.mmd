@@ -1,0 +1,22 @@
+classDiagram
+  class Product {
+    +code: str
+    +name: str
+    +price: int
+  }
+  class Inventory {
+    +product(code) Product
+    +quantity(code) int
+    +remove_one(code)
+  }
+  class VendingMachine {
+    -inventory: Inventory
+    -coins: Map~int, int~
+    +insert(coin)
+    +balance() int
+    +state() str
+    +select(code) tuple
+    +cancel() list
+  }
+  VendingMachine --> Inventory
+  Inventory o-- Product

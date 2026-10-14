@@ -1,0 +1,23 @@
+title: Pub/Sub Broker
+difficulty: medium
+tags: [messaging, observer, extensibility]
+source: authored
+reviewed: false
+version: 1
+format: system
+minutes: 45
+
+languages:
+  python:
+    files:
+      - { path: messages.py, role: provided }
+      - { path: broker.py, role: solution }
+
+hints:
+  - "Who knows about whom? Publishers should not know subscribers exist. What does the broker keep so that it can deliver a message to the right handlers?"
+  - "`messages.py` gives you `Message`, `Failure`, and `validate_topic`. Use them rather than writing your own checks, and note what `validate_topic` already rejects."
+  - "Keep subscriptions in the order they were made, each with an id, a topic, and a handler. `publish` takes a snapshot of the matching subscriptions and calls each in turn."
+  - "A handler may publish or subscribe while it is being called. Queue messages published during delivery and drain the queue after the current message is finished, so every subscriber sees messages in publish order."
+followups:
+  - How would you make delivery asynchronous, and what would you have to promise about ordering?
+  - How would you add delivery guarantees (at-least-once) for subscribers that crash?
