@@ -23,6 +23,24 @@ describe("real content", () => {
         expect(pub, item.slug).not.toContain('"correct"');
         continue;
       }
+      if (item.type === "lld") {
+        const pub = toStored(item).publicJson;
+        expect(pub, item.slug).not.toContain(JSON.stringify(item.changeMd.trim()).slice(1, -1).slice(0, 80));
+        expect(pub, item.slug).not.toContain(JSON.stringify(item.designMd.trim().slice(0, 80)).slice(1, -1));
+        for (const h of item.manifest.hints) expect(pub, item.slug).not.toContain(JSON.stringify(h).slice(1, -1));
+        for (const files of Object.values(item.languages)) {
+          // Hidden tests are identified by their names; reference code by a slice from its middle.
+          for (const text of [...Object.values(files.tests.hidden), ...Object.values(files.tests.extension)]) {
+            for (const m of text.matchAll(/def (test_\w+)|TEST_CASE\("([^"]+)"/g)) expect(pub, `${item.slug}: ${m[1] ?? m[2]}`).not.toContain((m[1] ?? m[2])!);
+          }
+          for (const [p, t] of Object.entries(files.reference)) {
+            const slice = t.slice(Math.floor(t.length / 2), Math.floor(t.length / 2) + 80);
+            if (files.starter[p]?.includes(slice)) continue;
+            expect(pub, `${item.slug}:${p}`).not.toContain(JSON.stringify(slice).slice(1, -1));
+          }
+        }
+        continue;
+      }
       if (item.type === "behavioral") {
         const pub = toStored(item).publicJson;
         for (const f of item.manifest.follow_ups) expect(pub, item.slug).not.toContain(JSON.stringify(f).slice(1, -1));

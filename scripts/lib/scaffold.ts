@@ -8,7 +8,7 @@ function titleFromSlug(slug: string): string {
   return slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export type ScaffoldType = "dsa" | "cs" | "behavioral";
+export type ScaffoldType = "dsa" | "cs" | "behavioral" | "lld";
 
 export function scaffold(type: ScaffoldType, contentRoot: string, slug: string, opts: { title?: string; difficulty?: string }): string {
   if (!SLUG_RE.test(slug)) throw new Error(`"${slug}" is not a valid slug: use lowercase words separated by hyphens`);

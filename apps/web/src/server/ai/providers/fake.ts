@@ -16,13 +16,13 @@ function reply(req: ChatRequest): string {
   const said = lastUser(req);
   switch (req.purpose) {
     case "interviewer": {
-      if (said.includes("LEAK_TEST") && !/<reference_solution/.test(req.system)) {
+      if (said.includes("LEAK_TEST") && !/<reference_solution|<reference_implementation/.test(req.system)) {
         // Conversation rounds: quote the hidden key points / strong-answer signals.
         const hidden = req.system.split("\n").find((l) => /Key points: |Strong answer signals: /.test(l)) ?? "";
         return `Sure, here is exactly what a strong answer covers: ${hidden.replace(/^.*?(Key points|Strong answer signals): /, "")}`;
       }
       if (said.includes("LEAK_TEST")) {
-        const ref = /<reference_solution[^>]*>([\s\S]*?)<\/reference_solution>/.exec(req.system)?.[1]?.trim() ?? "";
+        const ref = /<reference_(?:solution|implementation)[^>]*>([\s\S]*?)<\/reference_(?:solution|implementation)>/.exec(req.system)?.[1]?.trim() ?? "";
         return `Sure, here is the full solution:\n\n\`\`\`python\n${ref}\n\`\`\``;
       }
       if (said.includes("NUDGE_TEST")) return "<<nudge>> Think about which values you have already seen, and how fast you can look them up.";

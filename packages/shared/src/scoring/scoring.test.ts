@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { aiGradeSchema, checkGradeAgainstRubric, exampleGrade } from "./ai-grade";
-import { autoBehavioralScores, autoDsaScores, autoRecruiterScores, finalScores, recommend, selfScores, type DsaMetrics, type SourcedScore } from "./formulas";
+import { autoBehavioralScores, autoDsaScores, autoLldScores, autoRecruiterScores, finalScores, recommend, selfScores, type DsaMetrics, type SourcedScore } from "./formulas";
 import { extractJsonBlock } from "./json-block";
-import { BEHAVIORAL_RUBRIC, DSA_INTERVIEW_RUBRIC as R, RECRUITER_RUBRIC, RUBRICS, rubricForRound } from "./rubrics";
+import { BEHAVIORAL_RUBRIC, DSA_INTERVIEW_RUBRIC as R, RECRUITER_RUBRIC, LLD_RUBRIC, RUBRICS, rubricForRound } from "./rubrics";
 
 const allItems = (kind?: string) =>
   new Set(R.dimensions.flatMap((d) => d.items.filter((i) => !kind || i.kind === kind).map((i) => i.id)));
@@ -110,6 +110,7 @@ describe("round rubrics", () => {
     expect(rubricForRound("recruiter")).toBe(RECRUITER_RUBRIC);
     expect(rubricForRound("behavioral")).toBe(BEHAVIORAL_RUBRIC);
     expect(rubricForRound("dsa")).toBe(R);
+    expect(rubricForRound("lld")).toBe(LLD_RUBRIC);
     for (const rubric of Object.values(RUBRICS)) {
       const ids = rubric.dimensions.flatMap((d) => d.items.map((i) => i.id));
       expect(new Set(ids).size).toBe(ids.length);
@@ -154,5 +155,18 @@ describe("autoBehavioralScores", () => {
     expect(autoBehavioralScores({ ...m, iShare: 0.2, numberShare: 0, avgWords: 700 }).map((s) => s.score)).toEqual([1, 1, 1]);
     expect(autoBehavioralScores({ ...m, iShare: null }).map((s) => s.dimension)).toEqual(["impact", "concision"]);
     expect(autoBehavioralScores({ ...m, answers: 0 })).toEqual([]);
+  });
+});
+
+describe("autoLldScores", () => {
+  const m = { bestCoreEdge: { passed: 10, total: 10 }, extension: null, solved: true, submissions: 1, runs: 2, hintsUsed: 0, minutesToSolve: 20, edits: [] };
+  it("scores working code from the best submission, weighting the extension tests", () => {
+    expect(autoLldScores(m)[0]).toMatchObject({ dimension: "correctness", source: "auto", score: 4 });
+    expect(autoLldScores({ ...m, extension: { passed: 0, total: 4 } })[0]!.score).toBe(2); // 0.75 of the weight
+    expect(autoLldScores({ ...m, extension: { passed: 2, total: 4 } })[0]!.score).toBe(3); // 0.875
+    expect(autoLldScores({ ...m, bestCoreEdge: { passed: 5, total: 10 } })[0]!.score).toBe(2);
+    expect(autoLldScores({ ...m, bestCoreEdge: { passed: 1, total: 10 } })[0]!.score).toBe(1);
+    expect(autoLldScores({ ...m, hintsUsed: 3 })[0]!.score).toBe(3);
+    expect(autoLldScores({ ...m, bestCoreEdge: null })[0]!.score).toBe(1);
   });
 });

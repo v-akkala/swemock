@@ -230,3 +230,51 @@ export const BEHAVIORAL_DIMENSIONS = ["structure", "specificity", "ownership", "
 
 export const STRONG_ANSWER =
   "At my last internship I led the migration of our billing service to separate services and I wrote the cutover plan myself. We shipped it in six weeks, and I cut incidents by 30 percent. Next time I would involve support earlier.";
+
+// ---- low-level design (M5) ----------------------------------------------------------------------------
+
+const LLD_ROOT = path.resolve(import.meta.dirname, "../../../content/lld");
+
+export function lldSlugs(): string[] {
+  return fs.readdirSync(LLD_ROOT).filter((s) => fs.existsSync(path.join(LLD_ROOT, s, "problem.yaml")));
+}
+
+/** The reference files of an LLD problem: path → text. */
+export function lldReference(slug: string, lang: "python" | "cpp"): Record<string, string> {
+  const dir = path.join(LLD_ROOT, slug, lang, "reference");
+  return Object.fromEntries(fs.readdirSync(dir).map((f) => [f, fs.readFileSync(path.join(dir, f), "utf8")]));
+}
+
+/** Names of the hidden and extension tests (they must never reach the browser before the debrief). */
+export function lldHiddenTestNames(slug: string): string[] {
+  const out: string[] = [];
+  for (const lang of ["python", "cpp"] as const) {
+    for (const dir of ["hidden", "extension"]) {
+      const d = path.join(LLD_ROOT, slug, lang, "tests", dir);
+      if (!fs.existsSync(d)) continue;
+      for (const f of fs.readdirSync(d)) {
+        const text = fs.readFileSync(path.join(d, f), "utf8");
+        out.push(...[...text.matchAll(/def (test_\w+)|TEST_CASE\("([^"]+)"/g)].map((m) => (m[1] ?? m[2])!));
+      }
+    }
+  }
+  return out;
+}
+
+/** Opens a file tab and replaces its content. */
+export async function setFile(page: Page, file: string, code: string): Promise<void> {
+  await page.getByTestId(`file-${file}`).click();
+  // The editor is remounted per file; wait until the new one is the one the test hook talks to.
+  await page.waitForFunction((f) => (window as unknown as { __swemockEditorLabel?: string }).__swemockEditorLabel?.endsWith(`:${f}`), file);
+  await setCode(page, code);
+}
+
+export async function lldSubmit(page: Page): Promise<void> {
+  await page.getByTestId("submit-button").click();
+  await expect(page.getByTestId("verdict")).toBeVisible({ timeout: 150_000 });
+}
+
+/** A provided (starter) file of an LLD problem, as shipped. */
+export function lldProvidedFile(slug: string, file: string, lang: "python" | "cpp" = "python"): string {
+  return fs.readFileSync(path.join(LLD_ROOT, slug, lang, "starter", file), "utf8");
+}

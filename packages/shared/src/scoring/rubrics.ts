@@ -353,7 +353,145 @@ export const BEHAVIORAL_RUBRIC: Rubric = {
   ],
 };
 
+/** Spec §8.3: tests passed (auto), then a design review of six aspects, plus communication. */
+export const LLD_RUBRIC: Rubric = {
+  id: "lld-interview",
+  version: "1",
+  dimensions: [
+    {
+      id: "correctness",
+      label: "Working code (tests)",
+      description: "The implementation passes the hidden core, edge, and extension tests.",
+      anchors: [
+        "Does not build, or fails most core tests.",
+        "Core behavior works but edge cases or the new requirement fail.",
+        "Core and edge tests pass; the new requirement mostly works.",
+        "Everything passes, including the requirement change, with little rework.",
+      ],
+      items: [
+        { id: "k-run", kind: "must", text: "Ran the tests regularly and read the failures before changing code" },
+        { id: "k-edges", kind: "must", text: "Handled the edge cases the spec implies (empty state, invalid input, conflicts)" },
+        { id: "k-guess", kind: "red", text: "Changed code at random until tests passed" },
+      ],
+    },
+    {
+      id: "separation",
+      label: "Separation of concerns",
+      description: "Each class or module has one clear responsibility, and the pieces interact through small interfaces.",
+      anchors: [
+        "One large class (or script) does everything.",
+        "Some structure, but responsibilities are mixed or leak across classes.",
+        "Clear responsibilities with sensible boundaries.",
+        "Cohesive, loosely coupled pieces; the boundaries match what is likely to change.",
+      ],
+      items: [
+        { id: "s-split", kind: "must", text: "Split the problem into classes with one clear job each" },
+        { id: "s-iface", kind: "strong", text: "Kept interfaces between the pieces small" },
+        { id: "s-god", kind: "red", text: "Put most of the logic in one class" },
+      ],
+    },
+    {
+      id: "patterns",
+      label: "Patterns without over-engineering",
+      description: "Uses a pattern where it earns its place and keeps simple things simple.",
+      anchors: [
+        "No structure where it is needed, or patterns bolted on for show.",
+        "A pattern is used, but without a reason or with needless layers.",
+        "Patterns appear where they help, and each can be justified.",
+        "A minimal design with exactly the abstractions the problem needs, and the tradeoffs explained.",
+      ],
+      items: [
+        { id: "p-justify", kind: "must", text: "Could say why each abstraction exists" },
+        { id: "p-simple", kind: "strong", text: "Left simple things simple" },
+        { id: "p-over", kind: "red", text: "Added layers, factories, or interfaces with only one use" },
+      ],
+    },
+    {
+      id: "naming",
+      label: "Naming and encapsulation",
+      description: "Names say what things are; internals are hidden behind a clear public API.",
+      anchors: [
+        "Unclear names; state is public and mutated from outside.",
+        "Mixed naming, some internals exposed.",
+        "Clear names and a tidy public API.",
+        "Precise names, minimal public surface, invariants protected inside the class.",
+      ],
+      items: [
+        { id: "n-names", kind: "must", text: "Used names that say what things are and do" },
+        { id: "n-private", kind: "must", text: "Kept internal state private and exposed only what the spec needs" },
+        { id: "n-invariant", kind: "strong", text: "Enforced invariants in one place" },
+      ],
+    },
+    {
+      id: "errors_extensibility",
+      label: "Error handling and extensibility",
+      description: "Failures are handled deliberately, and the design absorbs the new requirement.",
+      anchors: [
+        "Errors ignored or swallowed; the change needs a rewrite.",
+        "Some validation; the change touches many places.",
+        "Clear, consistent errors; the change fits with modest edits.",
+        "Errors are part of the design; the change touches one place or adds a new piece.",
+      ],
+      items: [
+        { id: "e-errors", kind: "must", text: "Validated input and raised clear, consistent errors" },
+        { id: "e-change", kind: "must", text: "Added the new requirement without rewriting working code" },
+        { id: "e-swallow", kind: "red", text: "Swallowed exceptions or returned silent defaults for invalid use" },
+      ],
+    },
+    {
+      id: "complexity",
+      label: "Complexity of key operations",
+      description: "Chooses data structures that make the important operations efficient, and can say what they cost.",
+      anchors: [
+        "Operations are needlessly slow, or the cost isn't understood.",
+        "Correct but with avoidable linear scans on hot paths.",
+        "Appropriate structures; can state the cost of the main operations.",
+        "Structures chosen deliberately for the access pattern; tradeoffs and alternatives explained.",
+      ],
+      items: [
+        { id: "x-struct", kind: "must", text: "Chose data structures that fit the main operations" },
+        { id: "x-cost", kind: "must", text: "Stated the time complexity of the key operations" },
+        { id: "x-scan", kind: "red", text: "Scanned everything on an operation that is called often" },
+      ],
+    },
+    {
+      id: "conventions",
+      label: "Consistency with the provided code",
+      description: "Follows the conventions of the given file and uses it instead of working around it.",
+      anchors: [
+        "Ignores or rewrites the provided code.",
+        "Uses the provided code but with a different style or duplicated logic.",
+        "Follows the provided conventions and reuses its pieces.",
+        "Extends the provided code naturally and leaves it untouched unless there is a clear reason.",
+      ],
+      items: [
+        { id: "v-reuse", kind: "must", text: "Reused the provided models and helpers instead of duplicating them" },
+        { id: "v-style", kind: "must", text: "Matched its naming and error conventions" },
+        { id: "v-edit", kind: "red", text: "Rewrote or heavily edited the provided file without a reason" },
+      ],
+    },
+    {
+      id: "communication",
+      label: "Communication",
+      description: "Explains design decisions, asks about requirements, and responds to the interviewer.",
+      anchors: [
+        "Silent or hard to follow.",
+        "Explains when asked, but long silent stretches.",
+        "Narrates key decisions and answers questions clearly.",
+        "Clear and collaborative; states assumptions, tradeoffs, and what they would do next.",
+      ],
+      items: [
+        { id: "m-clarify", kind: "must", text: "Asked clarifying questions before designing" },
+        { id: "m-narrate", kind: "must", text: "Explained design decisions as I made them" },
+        { id: "m-tradeoffs", kind: "strong", text: "Discussed alternatives and tradeoffs" },
+        { id: "m-silent", kind: "red", text: "Went silent for long stretches or ignored the interviewer" },
+      ],
+    },
+  ],
+};
+
 export const RUBRICS: Record<string, Rubric> = {
+  [LLD_RUBRIC.id]: LLD_RUBRIC,
   [DSA_INTERVIEW_RUBRIC.id]: DSA_INTERVIEW_RUBRIC,
   [RECRUITER_RUBRIC.id]: RECRUITER_RUBRIC,
   [BEHAVIORAL_RUBRIC.id]: BEHAVIORAL_RUBRIC,
@@ -366,6 +504,8 @@ export function rubricForRound(roundType: string): Rubric {
       return RECRUITER_RUBRIC;
     case "behavioral":
       return BEHAVIORAL_RUBRIC;
+    case "lld":
+      return LLD_RUBRIC;
     default:
       return DSA_INTERVIEW_RUBRIC;
   }

@@ -1,0 +1,28 @@
+# SCAFFOLD: delete this line once the problem is finished (content:validate fails while it is here).
+#
+# A tiny working LLD problem so you can see every file in place. Replace the content, keep the structure.
+# Full guide: prompts/authoring/lld.md
+title: __TITLE__
+difficulty: __DIFFICULTY__           # easy | medium | hard
+tags: [data-structures]              # see LLD_TAGS in packages/content/src/lld/manifest.ts
+source: authored
+reviewed: false
+version: 1
+format: class                        # class: implement one class (B) | system: complete a system around a provided file (A)
+minutes: 45                          # interview length; the requirement change arrives at about 60% of it
+
+languages:                           # starter content lives in <lang>/starter/<path>
+  python:
+    files:
+      - { path: tally.py, role: solution }
+  cpp:
+    files:
+      - { path: tally.hpp, role: solution }
+
+hints:                               # four levels; level 5 is design.md and the reference
+  - "What state does a Tally need so that every operation is cheap?"
+  - "A dictionary of counts answers add and get directly; think about what top(k) needs."
+  - "Sort the entries by count (descending), then by key, and take the first k."
+  - "Keep counts in a dict. top(k): sorted(items, key=lambda kv: (-kv[1], kv[0]))[:k]."
+followups:
+  - How would you make top(k) cheaper if it were called far more often than add?

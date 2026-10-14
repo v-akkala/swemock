@@ -55,21 +55,31 @@
   - **Scoring:** recruiter and behavioral rubrics and auto scores in `@swemock/shared/scoring` (formula v1, docs/scoring.md); scorecard, packets, grading, redo, history, and debrief generalized per round type. Leak filter now also catches short secrets quoted whole.
   - **Tests:** shared 47, content 10, scripts 4, web 78 (adds round engine for both drivers and the fake AI, packets and feedback validation, story bank, resume versions, PDF extraction, leak filter), e2e 28 (new `rounds.spec.ts`: 10 — PDF upload and versions, recruiter and behavioral in every interviewer mode, hidden-content scans, voice with a stand-in recognizer, story bank, AI with the fake provider). `content:validate --all` passes.
 
-## In progress
-- Nothing. Waiting for the user to test M4.
+- **M5 — Low-Level Design**
+  - **Content type `lld`** with scaffold (`content:new lld`), a validator that runs the reference and the starter in the sandbox against every visible, hidden, and extension test (Python pytest and C++ doctest), and an authoring brief (`prompts/authoring/lld.md`, docs/adding-problems.md).
+  - **8 problems**: LRU cache, rate limiter, key-value store with transactions, task scheduler (Python and C++); parking lot, vending machine, pub/sub broker, expense splitter (Python, "complete the system" with a provided file). Each has a spec, hints, design notes, a Mermaid class diagram, an authored requirement change with extension tests, and follow-ups.
+  - **Practice** (`/lld`, `/lld/<slug>`): multi-file Monaco workspace (provided file editable with edits tracked and flagged, solution file, visible tests read-only), Run tests, Run file, Submit (hidden tests masked to "Hidden test #k" and category; counts by core/edge/extension; build errors that would quote hidden tests are replaced), "Show a requirement change" (unlocks extension tests, run as a separate build), hint ladder, design notes + diagram + reference reveal, give up, Approach Check for designs.
+  - **Interview**: scaffolded phases that scale with the problem's length; the requirement change is introduced by the app at 60% of the time (both drivers); AI interviewer with the reference and design notes behind the leak filter; scripted and "in another chat" modes; live and grading packets; AI or pasted grading; debrief with category counts, edits to the provided file, the reference, a rendered class diagram, and follow-ups.
+  - **Scoring**: LLD rubric (working code auto from tests; separation of concerns, patterns, naming and encapsulation, errors and extensibility, complexity, consistency with the provided code, communication via self/AI); recommendation capped when core/edge tests fail. docs/scoring.md.
+  - **Tests**: shared 48, content 10, scripts 5, web 86 (adds LLD service with a mocked judge: masking, extension runs, build-error masking, edit tracking, hints, drafts, interview phases, scoring, packets), e2e 37 (new `lld.spec.ts`: 9 — list, practice in both languages, requirement change, system format with edit tracking, hints and diagram, approach check, scripted/AI/external-chat interviews). `content:validate --all` passes (73 items).
 
-## Next: M5 — Low-Level Design
-Both formats (complete-the-system with a starter repo, and implement-the-class), edit tracking on file 1, the requirement-change mechanic with extension tests, design-review checklist, Mermaid in the debrief, 8 problems in Python and C++ where practical. Project runs already work in the judge (M1).
+## In progress
+- Nothing. Waiting for the user to test M5.
+
+## Next: M6 — AI Fluency
+CoderPad-like workspace, assistant panel (connected and packet), diff preview with per-hunk apply, full logging; Fallible mode (AST/token-level mutation operators, syntax re-check in the sandbox, catch detection); code comprehension (gutter annotations + matching), AI-generated code review (PR view), feature extension in an existing repo; 4 items each, in Python or C++.
 
 ## Known issues
 - Ollama and real Anthropic calls are implemented and unit-tested with mocked HTTP, but weren't exercised against live services here (no Ollama install; no paid API calls by policy). Test connection in Settings checks both.
 - Voice input was tested with a stand-in recognizer only; real browser speech recognition (Chrome/Edge/Safari) is untested here.
 - Resume parsing is heuristic: unusual layouts (multi-column PDFs) may split bullets oddly; paste the text instead and check the preview.
+- C++ LLD runs compile on every Run (about 5–10 s); there is no warm pool.
+- The live packet for an LLD interview in another chat contains the requirement change text (the other chat has to introduce it).
 
 ## Cut scope
 - Java and Node/TypeScript languages (user decision during M1); the runner remains pluggable.
-- Warm container pool (optional per spec) — Python runs take ~0.2 s and C++ ~0.6 s including compile.
+- Warm container pool (optional per spec) — Python runs take ~0.2 s and C++ ~0.6 s including compile (LLD C++ suites take longer).
 - Home-page dashboard for due reviews (M8); due reviews are listed on `/dsa` for now.
 - Persona/company presets for the interviewer prompt (`persona_suffix` placeholder) arrive with company presets in M8.
 - Spaced repetition and a standalone quiz for CS questions: arrives with the fundamentals quiz and flashcards in M7. MCQ questions are supported by the schema but none ship yet.
-- Remaining content toward the v1.0 targets (CS 30 of 60, behavioral 20 of 40) is M9.
+- Remaining content toward the v1.0 targets (DSA 15 of 50, CS 30 of 60, behavioral 20 of 40, LLD 8 of 12) is M9. C++ versions of the four "complete the system" LLD problems are not written.

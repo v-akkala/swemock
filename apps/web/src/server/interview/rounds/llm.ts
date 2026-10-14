@@ -1,4 +1,8 @@
 import "server-only";
+import { getLld, getLldPrivate } from "../../content/lld";
+import { latestLldFiles } from "../../lld/store";
+import { sessionEvents } from "../../dsa/store";
+import { lineDiff } from "../diff";
 import { getBehavioralPrivate, getBehavioralPublic, getCsPrivate, getCsPublic } from "../../content/questions";
 import type { SessionRow } from "../../dsa/store";
 import { loadTemplate, render } from "../../prompts/templates";
@@ -119,5 +123,71 @@ export const behavioralLlm: LlmRound = {
       return priv ? [...priv.strongSignals, ...priv.redFlags] : [];
     });
     return { code: [], prose };
+  },
+};
+
+// ---- low-level design -----------------------------------------------------------------------------------
+
+const slugOf = (session: SessionRow) => session.itemId!.split(":")[1]!;
+
+/** The candidate's files as one string: a stable form for diffs between turns. */
+const filesText = (files: Record<string, string>) => Object.entries(files).map(([p, t]) => `### ${p}\n${t}`).join("\n");
+
+export const lldLlm: LlmRound = {
+  blockCodeBlocks: true,
+  system(session, state) {
+    const slug = slugOf(session);
+    const pub = getLld(slug)!.pub;
+    const priv = getLldPrivate(slug)!;
+    const t = loadTemplate("interviewer/lld-system.md");
+    const langs = Object.keys(pub.languages);
+    const refLang = langs.includes("python") ? "python" : langs[0]!;
+    const text = render(t.body, {
+      minutes: String(totalMinutes(state.phases)),
+      persona_suffix: "",
+      mode_rules:
+        "This is interview mode: never give answers or designs. Nudge only when the candidate is clearly stuck, keep nudges small, and mark each one.",
+      title: pub.title,
+      format: pub.format === "system" ? "complete the system" : "implement the class",
+      spec: pub.specMd,
+      languages: langs.join(", "),
+      design: priv.designMd,
+      reference_language: refLang,
+      reference: Object.entries(priv.languages[refLang as "python"]!.reference).map(([p, f]) => `### ${p}\n${f}`).join("\n"),
+      change: priv.changeMd,
+      hints: priv.hints.map((h, i) => `${i + 1}. ${h}`).join("\n"),
+      followups: priv.followups.map((f) => `- ${f}`).join("\n"),
+      phase_plan: phasePlanText(state.phases),
+    });
+    return { text, versionTag: t.versionTag };
+  },
+  context(session, state, now) {
+    const lines = timeLines(session, state, now);
+    const saved = latestLldFiles(session.id);
+    const code = saved ? filesText(saved.files) : null;
+    if (code) {
+      lines.push(
+        state.llmCodeBaseline === null
+          ? `Candidate's files (${saved!.language}):\n${code.slice(0, 3000)}`
+          : state.llmCodeBaseline === code
+            ? "The code hasn't changed since your last reply."
+            : `Code changes since your last reply (${saved!.language}):\n${lineDiff(state.llmCodeBaseline, code)}`,
+      );
+    }
+    const runs = sessionEvents<{ verdict: string; passed: number; total: number; extension?: boolean; counts?: Record<string, { passed: number; total: number }> }>(session.id).filter((e) => e.kind === "run" || e.kind === "submit");
+    const last = runs.at(-1);
+    if (last) {
+      const c = last.payload.counts;
+      const by = c ? Object.entries(c).filter(([, v]) => v.total).map(([k, v]) => `${k} ${v.passed}/${v.total}`).join(", ") : "";
+      lines.push(`Latest test result: ${last.kind === "run" ? "ran the visible tests" : "submitted"}: ${last.payload.passed}/${last.payload.total} passed${by ? ` (${by})` : ""}.`);
+    }
+    if (sessionEvents(session.id, "requirement_change").length) lines.push("The new requirement has been introduced.");
+    lines.push("</context>");
+    return { text: lines.join("\n"), code };
+  },
+  leak(session) {
+    const priv = getLldPrivate(slugOf(session))!;
+    const code = Object.values(priv.languages).flatMap((l) => Object.values(l!.reference));
+    return { code, prose: [priv.designMd, ...priv.hints.slice(2)] };
   },
 };

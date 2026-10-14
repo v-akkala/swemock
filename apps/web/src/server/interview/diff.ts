@@ -23,3 +23,13 @@ export function lineDiff(before: string, after: string, maxChars = 2500): string
 function truncate(s: string, max: number): string {
   return s.length <= max ? s : `${s.slice(0, max)}\n… (truncated)`;
 }
+
+/** How many lines were added and removed between two versions of a file. */
+export function diffStats(before: string, after: string): { added: number; removed: number } {
+  if (before === after) return { added: 0, removed: 0 };
+  const a = before.split("\n").length;
+  const b = after.split("\n").length;
+  if (a * b > 400 * 400) return { added: b, removed: a };
+  const lines = lineDiff(before, after, Number.MAX_SAFE_INTEGER).split("\n");
+  return { added: lines.filter((l) => l.startsWith("+ ")).length, removed: lines.filter((l) => l.startsWith("- ")).length };
+}

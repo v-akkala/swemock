@@ -52,6 +52,12 @@ export interface BehavioralRound {
   usedProbes: string[];
 }
 
+/** Low-level design: the requirement change has its own event; this just marks which problem and when. */
+export interface LldRound {
+  kind: "lld";
+  slug: string;
+}
+
 export interface InterviewState {
   phases: Phase[];
   phaseIndex: number;
@@ -64,7 +70,7 @@ export interface InterviewState {
   /** The candidate's code when the AI interviewer last spoke, for diffs. */
   llmCodeBaseline: string | null;
   /** Round-specific state; absent for coding rounds. */
-  round?: RecruiterRound | BehavioralRound;
+  round?: RecruiterRound | BehavioralRound | LldRound;
 }
 
 export function readState(session: SessionRow): InterviewState {

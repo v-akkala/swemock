@@ -24,6 +24,8 @@ export interface CodeEditorProps {
   onSubmit?: () => void;
   readOnly?: boolean;
   height?: string;
+  /** Identifies what is open (tests wait for it after switching files). */
+  label?: string;
 }
 
 function useDarkMode(): boolean {
@@ -39,7 +41,7 @@ function useDarkMode(): boolean {
   return dark;
 }
 
-export default function CodeEditor({ language, value, onChange, onRun, onSubmit, readOnly, height = "100%" }: CodeEditorProps) {
+export default function CodeEditor({ language, value, onChange, onRun, onSubmit, readOnly, height = "100%", label }: CodeEditorProps) {
   const dark = useDarkMode();
   // Monaco commands are registered once; keep them pointing at the latest callbacks.
   const handlers = useRef({ onRun, onSubmit });
@@ -60,6 +62,7 @@ export default function CodeEditor({ language, value, onChange, onRun, onSubmit,
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter, () => handlers.current.onSubmit?.());
         // Hook for end-to-end tests, which can't type whole programs reliably through auto-indent.
         // With several editors mounted (an assessment has two), it targets the one on screen.
+        (window as unknown as { __swemockEditorLabel?: string }).__swemockEditorLabel = label;
         (window as unknown as { __swemockSetCode?: (v: string) => void }).__swemockSetCode = (value) => {
           const visible = monaco.editor.getEditors().find((e) => e.getDomNode()?.offsetParent != null);
           visible?.setValue(value);

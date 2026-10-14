@@ -388,7 +388,7 @@ export function ProblemWorkspace(props: WorkspaceProps) {
   );
 }
 
-function difficultyColor(d: string): string {
+export function difficultyColor(d: string): string {
   return d === "easy"
     ? "text-emerald-600 dark:text-emerald-400"
     : d === "medium"
@@ -396,7 +396,7 @@ function difficultyColor(d: string): string {
       : "text-red-600 dark:text-red-400";
 }
 
-function HintLadder(props: {
+export function HintLadder(props: {
   interview: boolean;
   hintCount: number;
   hints: { level: number; text: string }[];
@@ -493,7 +493,8 @@ function EditorialView({ editorial, languages }: { editorial: EditorialPayload; 
 }
 
 /** Approach Check (spec §7.8): a verdict on a plan, never code. Live with a model, or via a packet. */
-function ApproachCheck(props: { slug: string; sessionId: string | null; aiConnected: boolean; onSession: (id: string) => void }) {
+export function ApproachCheck(props: { slug: string; itemType?: "dsa" | "lld"; sessionId: string | null; aiConnected: boolean; onSession: (id: string) => void }) {
+  const type = props.itemType ?? "dsa";
   const [approach, setApproach] = useState("");
   const [reply, setReply] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -507,7 +508,7 @@ function ApproachCheck(props: { slug: string; sessionId: string | null; aiConnec
     setBusy(true);
     setError(null);
     try {
-      const res = await api<{ sessionId: string; reply: string }>(`/api/dsa/${props.slug}/approach`, "POST", {
+      const res = await api<{ sessionId: string; reply: string }>(`/api/${type}/${props.slug}/approach`, "POST", {
         approach,
         sessionId: props.sessionId ?? undefined,
       });
@@ -530,7 +531,7 @@ function ApproachCheck(props: { slug: string; sessionId: string | null; aiConnec
         value={approach}
         onChange={(e) => setApproach(e.target.value)}
         aria-label="Your approach"
-        placeholder="For example: scan once and keep a hash map of counts…"
+        placeholder="For example: scan once and keep a hash map of counts… (design problems: the classes, who owns what, and the data structures)"
         className="bg-card h-28 w-full rounded-md border border-border p-2 text-sm"
       />
       {props.aiConnected ? (
@@ -549,6 +550,7 @@ function ApproachCheck(props: { slug: string; sessionId: string | null; aiConnec
         <PacketPanel
           kind="approach-check"
           slug={props.slug}
+          itemType={type}
           sessionId={props.sessionId ?? undefined}
           getApproach={() => approachRef.current}
           title="Check it with any chatbot"

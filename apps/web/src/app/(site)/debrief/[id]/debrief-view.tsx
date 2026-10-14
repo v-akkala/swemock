@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import type { DebriefData } from "@/server/debrief";
 import type { ScorecardView } from "@/server/scoring/scorecard";
 import { BehavioralExtras, RecruiterExtras } from "./conversation-debrief";
+import { DesignView } from "@/components/lld/design-view";
+import { LANGUAGE_LABELS } from "@swemock/shared";
 
 const SOURCE_STYLE = {
   auto: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
@@ -101,6 +103,31 @@ export function DebriefView({ data }: { data: DebriefData }) {
         </section>
       )}
 
+      {data.lld && (
+        <section aria-labelledby="lld-heading" className="space-y-4" data-testid="lld-reveal">
+          <h2 id="lld-heading" className="text-lg font-semibold">
+            Reference
+          </h2>
+          <div>
+            <h3 className="font-medium">The requirement change</h3>
+            <div className="mt-1 text-sm">
+              <Markdown>{data.lld.change}</Markdown>
+            </div>
+          </div>
+          <DesignView reveal={data.lld.design} languages={Object.keys(data.lld.design.references).map((id) => ({ id, label: LANGUAGE_LABELS[id as "python" | "cpp"] ?? id }))} />
+          {data.lld.followups.length > 0 && (
+            <div>
+              <h3 className="font-medium">Follow-up questions an interviewer might ask</h3>
+              <ul className="mt-1 list-disc pl-5 text-sm">
+                {data.lld.followups.map((f) => (
+                  <li key={f}>{f}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+      )}
+
       <div className="flex flex-wrap gap-2 border-t border-border pt-4">
         {interview && (
           <Button variant="outline" disabled={busy} onClick={() => void action("redo", (r) => router.push(`/interview/${(r as { id: string }).id}`))} data-testid="redo">
@@ -112,8 +139,8 @@ export function DebriefView({ data }: { data: DebriefData }) {
             Add to review queue
           </Button>
         )}
-        {data.problem && (
-          <Button variant="ghost" onClick={() => router.push(`/dsa/${data.problem!.slug}`)}>
+        {data.problem && data.problemHref && (
+          <Button variant="ghost" onClick={() => router.push(data.problemHref!)}>
             Practice this problem
           </Button>
         )}

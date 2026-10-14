@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 type Interviewer = "ai" | "scripted" | "packet";
 
 /** Starts a timed mock interview on this problem with the chosen kind of interviewer. */
-export function StartInterview({ slug, aiConnected }: { slug: string; aiConnected: boolean }) {
+export function StartInterview({ slug, aiConnected, round = "dsa", minutes = 50 }: { slug: string; aiConnected: boolean; round?: "dsa" | "lld"; minutes?: number }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [choice, setChoice] = useState<Interviewer>(aiConnected ? "ai" : "scripted");
@@ -19,7 +19,7 @@ export function StartInterview({ slug, aiConnected }: { slug: string; aiConnecte
     setBusy(true);
     setError(null);
     try {
-      const { id } = await api<{ id: string }>("/api/interview", "POST", { slug, interviewer: choice });
+      const { id } = await api<{ id: string }>("/api/interview", "POST", { round, slug, interviewer: choice });
       router.push(`/interview/${id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -46,8 +46,9 @@ export function StartInterview({ slug, aiConnected }: { slug: string; aiConnecte
       {open && (
         <div role="dialog" aria-label="Start a mock interview" className="bg-background absolute right-0 z-20 mt-2 w-96 space-y-3 rounded-lg border border-border p-4 shadow-xl">
           <p className="text-sm">
-            A 50-minute interview with phases (clarify, approach, code, test) and a strict clock. Hints lower your score; the editorial
-            waits for the debrief.
+            {round === "lld"
+              ? `A ${minutes}-minute design interview: clarify, design, implement, then a new requirement about 60% of the way in. Hints lower your score; the reference waits for the debrief.`
+              : `A ${minutes}-minute interview with phases (clarify, approach, code, test) and a strict clock. Hints lower your score; the editorial waits for the debrief.`}
           </p>
           <fieldset className="space-y-2">
             <legend className="sr-only">Interviewer</legend>

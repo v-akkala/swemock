@@ -103,7 +103,7 @@ export function AiErrorBar({ iv }: { iv: InterviewApi }) {
   );
 }
 
-export function LivePacket({ kind, sessionId, description }: { kind: "dsa-interview-live" | "recruiter-live" | "behavioral-live"; sessionId: string; description: string }) {
+export function LivePacket({ kind, sessionId, description }: { kind: "dsa-interview-live" | "recruiter-live" | "behavioral-live" | "lld-interview-live"; sessionId: string; description: string }) {
   return (
     <div className="shrink-0 border-b border-border p-3">
       <PacketPanel kind={kind} sessionId={sessionId} title="Live interview packet" description={description} pasteLabel="Paste the conversation (optional, for grading)" />

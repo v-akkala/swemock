@@ -1,0 +1,1 @@
+New requirement: support removing counts. `remove(key, n=1)` subtracts `n` from the key's count and drops the key when its count reaches zero. Removing more than the key has, or a key that was never added, raises `KeyError` (C++: `std::out_of_range`).

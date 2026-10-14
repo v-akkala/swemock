@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { ContentError, loadDsaItem, toPrivate, toPublic, type LoadedDsa } from "./dsa/load";
+import { loadLldItem, lldPrivate, lldPublic, type LoadedLld } from "./lld/load";
 import {
   behavioralPrivate,
   behavioralPublic,
@@ -17,17 +18,20 @@ export * from "./dsa/manifest";
 export * from "./dsa/load";
 export * from "./question/manifest";
 export * from "./question/load";
+export * from "./lld/manifest";
+export * from "./lld/load";
 
-export type ContentItem = LoadedDsa | LoadedCs | LoadedBehavioral;
+export type ContentItem = LoadedDsa | LoadedCs | LoadedBehavioral | LoadedLld;
 
 /** One folder per item under content/<type>/. Adding a type: a loader, a public/private split, and a line here. */
-export const CONTENT_TYPES = ["dsa", "cs", "behavioral"] as const;
+export const CONTENT_TYPES = ["dsa", "cs", "behavioral", "lld"] as const;
 export type ContentType = (typeof CONTENT_TYPES)[number];
 
 const LOADERS: Record<ContentType, (dir: string) => ContentItem> = {
   dsa: loadDsaItem,
   cs: loadCsItem,
   behavioral: loadBehavioralItem,
+  lld: loadLldItem,
 };
 
 /** Every file under `dir` (relative paths, sorted), skipping dotfiles and editor junk. */
@@ -140,6 +144,8 @@ export function toStored(item: ContentItem): StoredItem {
       return { ...base, difficulty: item.manifest.difficulty, tags: item.manifest.tags, publicJson: JSON.stringify(toPublic(item)), privateJson: JSON.stringify(toPrivate(item)) };
     case "cs":
       return { ...base, difficulty: item.manifest.difficulty, tags: item.manifest.topics, publicJson: JSON.stringify(csPublic(item)), privateJson: JSON.stringify(csPrivate(item)) };
+    case "lld":
+      return { ...base, difficulty: item.manifest.difficulty, tags: item.manifest.tags, publicJson: JSON.stringify(lldPublic(item)), privateJson: JSON.stringify(lldPrivate(item)) };
     case "behavioral":
       return { ...base, difficulty: null, tags: item.manifest.competencies, publicJson: JSON.stringify(behavioralPublic(item)), privateJson: JSON.stringify(behavioralPrivate(item)) };
   }

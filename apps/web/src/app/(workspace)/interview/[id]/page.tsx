@@ -6,7 +6,9 @@ import { getDsa, getDsaPrivate } from "@/server/content/repo";
 import { readSettings } from "@/server/settings";
 import { getSession, loadDrafts, sessionEvents } from "@/server/dsa/store";
 import { settleInterview } from "@/server/interview/engine";
-import { InterviewShell } from "./interview-shell";
+import { getLld, getLldPrivate } from "@/server/content/lld";
+import { loadLldDrafts } from "@/server/lld/store";
+import { InterviewShell, LldInterviewShell } from "./interview-shell";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Interview · swemock" };
@@ -29,6 +31,41 @@ export default async function InterviewPage({ params }: { params: Promise<{ id: 
         voiceEnabled={readSettings(getDb()).features.voiceInput}
         resume={round?.kind === "recruiter" ? { title: round.config.resumeTitle, text: round.config.resumeText, role: round.config.role, company: round.config.company, jobDescription: round.config.jobDescription } : undefined}
         questionCount={round?.kind === "behavioral" ? round.config.questionIds.length : undefined}
+      />
+    );
+  }
+
+  if (session.roundType === "lld") {
+    const lslug = session.itemId!.split(":")[1]!;
+    const { pub: lp } = getLld(lslug)!;
+    const lDrafts = loadLldDrafts(session.itemId!, id);
+    const lRevealed = new Set(sessionEvents<{ level: number; nudge?: boolean }>(id, "hint").filter((e) => !e.payload.nudge).map((e) => e.payload.level));
+    return (
+      <LldInterviewShell
+        sessionId={id}
+        liveVia={state.liveVia}
+        workspace={{
+          slug: lslug,
+          title: lp.title,
+          difficulty: lp.difficulty,
+          tags: lp.tags,
+          format: lp.format,
+          specMd: lp.specMd,
+          languages: LANGUAGES.filter((l) => lp.languages[l]).map((l) => ({
+            id: l,
+            label: LANGUAGE_LABELS[l],
+            monaco: l === "cpp" ? "cpp" : "python",
+            files: lp.languages[l]!.files.map((f) => ({ ...f, draft: lDrafts[l]?.[f.path] ?? null })),
+            visibleTests: lp.languages[l]!.visibleTests,
+          })),
+          mode: "interview",
+          sessionId: id,
+          solved: false,
+          hintCount: lp.hintCount,
+          initialHints: getLldPrivate(lslug)!.hints.map((text, i) => ({ level: i + 1, text })).filter((h) => lRevealed.has(h.level)),
+          initialReveal: null,
+          initialChange: null,
+        }}
       />
     );
   }

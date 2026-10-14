@@ -2,6 +2,7 @@ import { ApiError, handle } from "@/server/http/errors";
 import { getSession } from "@/server/dsa/store";
 import { startInterview } from "@/server/interview/engine";
 import { startBehavioral } from "@/server/interview/rounds/behavioral";
+import { startLldInterview } from "@/server/interview/rounds/lld";
 import { startRecruiter } from "@/server/interview/rounds/recruiter";
 import { readState } from "@/server/interview/state";
 
@@ -22,6 +23,7 @@ export function POST(_request: Request, ctx: { params: Promise<{ id: string }> }
     if (round?.kind === "behavioral") {
       return Response.json({ id: startBehavioral({ ...common, questionIds: round.config.questionIds, lens: round.config.lens }).id });
     }
+    if (round?.kind === "lld") return Response.json({ id: startLldInterview({ slug: round.slug, ...common }).id });
     if (!session.itemId) throw new ApiError(404, "Unknown interview.");
     return Response.json({ id: startInterview({ slug: session.itemId.split(":")[1]!, ...common }).id });
   });

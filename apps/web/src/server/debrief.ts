@@ -3,6 +3,9 @@ import type { DsaPublic } from "@swemock/content";
 import type { Language } from "@swemock/shared";
 import type { AnswerSignals, ResumeFeedback, RewriteResult } from "@swemock/shared";
 import { getDsa, getDsaPrivate } from "./content/repo";
+import { getLld, getLldPrivate } from "./content/lld";
+import { revealPayload } from "./lld/service";
+import type { LldRevealPayload } from "@/lib/lld-types";
 import { getBehavioralPrivate, getBehavioralPublic, getCsPrivate, getCsPublic } from "./content/questions";
 import { resolveAi } from "./ai/config";
 import { sessionUsage, type SessionUsage } from "./ai/usage";
@@ -51,7 +54,17 @@ export interface BehavioralDebrief {
   rewrites: { result: RewriteResult; via: string } | null;
 }
 
+export interface LldDebrief {
+  design: LldRevealPayload;
+  followups: string[];
+  /** The requirement change as introduced (shown with the reference). */
+  change: string;
+}
+
 export interface DebriefData {
+  /** Where "Practice this problem" goes. */
+  problemHref: string | null;
+  lld: LldDebrief | null;
   roundType: string;
   /** Human title of the round or problem. */
   title: string;
@@ -78,7 +91,7 @@ function label(kind: string, p: Record<string, unknown>): { label: string; detai
     case "submit":
       return {
         label: `${kind === "run" ? "Run" : "Submit"} (${p.language === "cpp" ? "C++" : "Python"}): ${String(p.verdict).replace(/_/g, " ")}`,
-        detail: `${p.passed}/${p.total} passed${p.custom ? ", with custom input" : ""}`,
+        detail: `${p.passed}/${p.total} passed${p.custom ? ", with custom input" : ""}${p.extension ? ", with extension tests" : ""}`,
       };
     case "hint":
       return p.nudge
@@ -86,6 +99,8 @@ function label(kind: string, p: Record<string, unknown>): { label: string; detai
         : { label: Number(p.level) > 4 ? (p.gaveUp ? "Gave up: editorial shown" : "Editorial shown") : `Hint ${p.level} revealed`, detail: null };
     case "phase_change":
       return { label: p.to === "ended" ? "Ended" : `Phase: ${p.to}`, detail: p.auto ? "time" : String(p.reason ?? "") || null };
+    case "requirement_change":
+      return { label: "New requirement introduced", detail: null };
     case "code_snapshot":
       return { label: "Code snapshot", detail: null };
     case "approach_check":
@@ -104,7 +119,8 @@ export function loadDebrief(sessionId: string): DebriefData | null {
   if (!session) return null;
   if (session.mode === "interview") session = settleInterview(sessionId).session;
   const slug = session.itemId?.split(":")[1] ?? null;
-  const problem = slug ? getDsa(slug) : null;
+  const lldItem = session.roundType === "lld" && slug ? getLld(slug) : null;
+  const problem = lldItem ? { pub: lldItem.pub } : slug && session.roundType !== "lld" ? getDsa(slug) : null;
 
   let code: Frame["code"] = null;
   const frames: Frame[] = sessionEvents<Record<string, unknown>>(session.id)
@@ -112,13 +128,19 @@ export function loadDebrief(sessionId: string): DebriefData | null {
     .map((e) => {
       const p = e.payload;
       if (typeof p.code === "string" && typeof p.language === "string") code = { language: p.language, code: p.code };
+      else if (p.files && typeof p.files === "object" && typeof p.language === "string") {
+        code = { language: p.language, code: Object.entries(p.files as Record<string, string>).map(([f, t]) => `=== ${f} ===\n${t}`).join("\n\n") };
+      }
       return { ts: e.ts, at: Math.max(0, Math.round((e.ts - session.startedAt) / 1000)), kind: e.kind, ...label(e.kind, p), code };
     });
 
   const ended = session.status !== "active";
-  const priv = slug && ended ? getDsaPrivate(slug) : null;
+  const priv = slug && ended && session.roundType !== "lld" ? getDsaPrivate(slug) : null;
+  const lldPriv = lldItem && ended ? getLldPrivate(slug!) : null;
   const conversation = ended && session.mode === "interview" ? conversationExtras(session) : { recruiter: null, behavioral: null };
   return {
+    problemHref: problem ? `/${session.roundType === "lld" ? "lld" : "dsa"}/${problem.pub.slug}` : null,
+    lld: lldPriv && slug ? { design: revealPayload(slug), followups: lldPriv.followups, change: lldPriv.changeMd } : null,
     roundType: session.roundType,
     title: session.roundType === "recruiter" ? "Recruiter screen" : session.roundType === "behavioral" ? "Behavioral interview" : (problem?.pub.title ?? ""),
     ...conversation,

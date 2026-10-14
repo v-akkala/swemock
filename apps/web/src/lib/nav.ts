@@ -10,7 +10,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/dsa", label: "DSA", description: "LeetCode-style problems with a real judge." },
   { href: "/recruiter", label: "Recruiter Screen", description: "Resume walkthrough and CS fundamentals." },
   { href: "/behavioral", label: "Behavioral", description: "STAR answers, follow-ups, and a story bank." },
-  { href: "/lld", label: "Low-Level Design", description: "Complete the system, or implement the class.", milestone: "M5" },
+  { href: "/lld", label: "Low-Level Design", description: "Complete the system, or implement the class." },
   { href: "/ai-fluency", label: "AI Fluency", description: "Comprehension, AI code review, feature extension.", milestone: "M6" },
   { href: "/ml", label: "ML", description: "System design, serving, training, fundamentals, applied.", milestone: "M7" },
   { href: "/loops", label: "Mock Loops", description: "Chain rounds into a full loop with a committee packet.", milestone: "M8" },

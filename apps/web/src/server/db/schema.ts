@@ -130,6 +130,7 @@ export const EVENT_KINDS = [
   "packet_copied",
   "reply_pasted",
   "self_score",
+  "requirement_change",
 ] as const;
 
 /** Append-only log; the source of truth for replay. */

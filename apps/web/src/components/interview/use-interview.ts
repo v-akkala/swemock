@@ -35,6 +35,8 @@ export interface InterviewState {
   roundType: string;
   /** Recruiter screen: the question waiting for the candidate to grade themselves. */
   pendingGrade: string | null;
+  /** Low-level design: the requirement change, once the interviewer has introduced it. */
+  change: string | null;
 }
 
 /** How an answer was given: reported with the message so the debrief can show speed and fillers. */

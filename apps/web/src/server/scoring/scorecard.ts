@@ -6,6 +6,8 @@ import {
   FORMULA_VERSION,
   autoBehavioralScores,
   autoDsaScores,
+  autoLldScores,
+  type LldMetrics,
   autoRecruiterScores,
   finalScores,
   recommend,
@@ -53,8 +55,58 @@ export function dsaMetrics(session: SessionRow): DsaMetrics {
   };
 }
 
+type Counts = Record<"core" | "edge" | "extension", { passed: number; total: number }>;
+
+/** Objective metrics for a low-level design round, from the run/submit events. */
+export function lldMetrics(session: SessionRow): LldMetrics {
+  const all = sessionEvents<Record<string, unknown>>(session.id);
+  const submits = all.filter((e) => e.kind === "submit") as unknown as { ts: number; payload: { verdict: string; counts: Counts; extension: boolean; edits?: Record<string, { added: number; removed: number }> } }[];
+  const core = (c: Counts) => ({ passed: c.core.passed + c.edge.passed, total: c.core.total + c.edge.total });
+  let best: (typeof submits)[number] | null = null;
+  for (const s of submits) {
+    const a = core(s.payload.counts);
+    const b = best ? core(best.payload.counts) : null;
+    if (a.total > 0 && (!b || a.passed / a.total >= b.passed / b.total)) best = s;
+  }
+  const withExt = submits.filter((s) => s.payload.extension && s.payload.counts.extension.total > 0);
+  let bestExt: { passed: number; total: number } | null = null;
+  for (const s of withExt) {
+    const e = s.payload.counts.extension;
+    if (!bestExt || e.passed / e.total >= bestExt.passed / bestExt.total) bestExt = e;
+  }
+  const solvedAt = submits.find((s) => s.payload.verdict === "accepted");
+  const last = submits.at(-1);
+  return {
+    bestCoreEdge: best ? core(best.payload.counts) : null,
+    extension: bestExt,
+    solved: Boolean(solvedAt),
+    submissions: submits.length,
+    runs: all.filter((e) => e.kind === "run").length,
+    hintsUsed: all.filter((e) => e.kind === "hint").length,
+    minutesToSolve: solvedAt ? Math.round((solvedAt.ts - session.startedAt) / 6000) / 10 : null,
+    edits: Object.entries(last?.payload.edits ?? {}).map(([path, e]) => ({ path, ...e })),
+  };
+}
+
 /** Auto scores and the metric lines the debrief shows, per round type. */
-function autoFor(session: SessionRow): { scores: SourcedScore[]; lines: string[]; dsa: DsaMetrics | null; behavioral: BehavioralMetrics | null } {
+function autoFor(session: SessionRow): { scores: SourcedScore[]; lines: string[]; dsa: DsaMetrics | null; behavioral: BehavioralMetrics | null; lld?: LldMetrics } {
+  if (session.roundType === "lld") {
+    const m = lldMetrics(session);
+    return {
+      scores: autoLldScores(m),
+      lines: [
+        m.bestCoreEdge ? `Best submission: ${m.bestCoreEdge.passed}/${m.bestCoreEdge.total} core and edge tests` : "No submission",
+        m.extension ? `Extension tests (new requirement): ${m.extension.passed}/${m.extension.total}` : "New requirement: not tested",
+        m.solved ? `All core and edge tests passed after ${m.minutesToSolve} min` : "Core and edge tests never all passed",
+        `Submissions: ${m.submissions}; test runs: ${m.runs}`,
+        `Hints and nudges: ${m.hintsUsed}`,
+        m.edits.length ? `Edited provided code: ${m.edits.map((e) => `${e.path} (+${e.added} −${e.removed})`).join(", ")}` : "Provided code left untouched",
+      ],
+      dsa: null,
+      behavioral: null,
+      lld: m,
+    };
+  }
   if (session.roundType === "recruiter") {
     const round = readState(session).round;
     const rec = round?.kind === "recruiter" ? round : null;
@@ -154,7 +206,7 @@ function view(session: SessionRow, card: StoredCard): ScorecardView {
     behavioral: auto.behavioral,
     scores,
     final,
-    recommendation: recommend(rubric, scores, { failedHiddenTests: auto.dsa ? !auto.dsa.accepted : false }),
+    recommendation: recommend(rubric, scores, { failedHiddenTests: auto.dsa ? !auto.dsa.accepted : auto.lld ? !auto.lld.solved : false }),
     selfTicked: card.selfTicked,
     ai: card.ai,
     formulaVersion: FORMULA_VERSION,

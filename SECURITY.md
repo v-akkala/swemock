@@ -130,3 +130,18 @@ the editorial and reference code. The same private/public split is what the spec
   never contains them, the AI interviewer sees them but its replies pass the leak filter (which also catches
   a short secret quoted whole), and the browser receives them only after the candidate answers in the
   recruiter screen (by design) or in the debrief.
+
+## LLD workspaces
+
+- A run copies the candidate's editor files (only the files the manifest lists; anything else the browser
+  sends is dropped), the support files, and the test files into the sandbox like any project run: no
+  network, read-only root, tmpfs `/work`, resource limits. The commands are fixed per language in
+  `@swemock/shared` (`LLD_TEST_COMMAND`), not read from content.
+- Hidden and extension test sources are merged server-side and never sent to the browser. Results show only
+  "Hidden test #k", its category, and pass/fail: no names, messages, or tracebacks. If the build fails and
+  the compiler output mentions a hidden test file, the output is replaced by a generic message, because
+  compilers print the offending source line.
+- Reference implementations, design notes, the class diagram, and the requirement change are private until the
+  debrief (or until a practice session reveals them deliberately: the hint ladder and the "requirement change"
+  button). The AI interviewer sees them, so its replies pass the same leak filter as in DSA.
+- The class diagram is drawn in the browser by Mermaid with `securityLevel: "strict"`.

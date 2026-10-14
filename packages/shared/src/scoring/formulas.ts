@@ -202,6 +202,46 @@ export function autoBehavioralScores(m: BehavioralMetrics): SourcedScore[] {
   return out;
 }
 
+// ---- auto (LLD) -------------------------------------------------------------------------------------
+
+export interface LldMetrics {
+  /** Best submission's core and edge results (the tests that decide "solved"). */
+  bestCoreEdge: { passed: number; total: number } | null;
+  /** Extension tests in the best submission made after the change; null if the change never came or no such submit. */
+  extension: { passed: number; total: number } | null;
+  solved: boolean;
+  submissions: number;
+  runs: number;
+  hintsUsed: number;
+  minutesToSolve: number | null;
+  /** Edits to provided files in the final submission. */
+  edits: { path: string; added: number; removed: number }[];
+}
+
+/**
+ * Working code: core and edge tests count for 75%, extension tests for 25% (all of it when the change was
+ * never introduced). All passing → 4, ≥ 85% → 3, ≥ 50% → 2, else 1; minus 1 for three or more hints.
+ */
+export function autoLldScores(m: LldMetrics): SourcedScore[] {
+  const hintPenalty = m.hintsUsed >= 3 ? 1 : 0;
+  if (!m.bestCoreEdge || m.bestCoreEdge.total === 0) return [{ dimension: "correctness", source: "auto", score: 1, evidence: ["No submission"] }];
+  const base = m.bestCoreEdge.passed / m.bestCoreEdge.total;
+  const share = m.extension && m.extension.total ? 0.75 * base + 0.25 * (m.extension.passed / m.extension.total) : base;
+  const raw = share >= 1 ? 4 : share >= 0.85 ? 3 : share >= 0.5 ? 2 : 1;
+  return [
+    {
+      dimension: "correctness",
+      source: "auto",
+      score: clamp(raw - hintPenalty),
+      evidence: [
+        `Core and edge tests: ${m.bestCoreEdge.passed}/${m.bestCoreEdge.total}`,
+        ...(m.extension ? [`Extension tests: ${m.extension.passed}/${m.extension.total}`] : []),
+        ...(m.hintsUsed ? [`${m.hintsUsed} hint(s) used`] : []),
+      ],
+    },
+  ];
+}
+
 // ---- merge and recommend ----------------------------------------------------------------------------
 
 /** Per dimension the most informed source wins: ai over self over auto. Every source is kept for display. */

@@ -77,3 +77,18 @@ A rewrite (of a behavioral answer or a resume bullet) may use only facts the can
 this mechanically for numbers: any number in a suggested rewrite that appears nowhere in the candidate's own
 words (or resume, or saved story notes) is rejected, for the connected model (which gets one automatic
 retry) and for pasted replies. What a better answer needs is listed as "facts to add".
+
+## Low-level design
+
+Dimensions: working code (tests, auto), then the design review: separation of concerns, patterns without
+over-engineering, naming and encapsulation, error handling and extensibility, complexity of key operations,
+consistency with the provided code, and communication.
+
+- **Working code (auto):** from the best submission: core and edge tests carry 75% and the extension tests 25%
+  (all of it when the requirement change never came). All passing → 4, ≥ 85% → 3, ≥ 50% → 2, else 1; minus 1
+  for three or more hints.
+- **The design dimensions** come from the self checklist (revealed after the round) or an AI grade (live, or a
+  pasted grading packet that includes the reference and the design notes for calibration).
+- **Cap:** if the core and edge tests never all passed, the recommendation is at most Lean No Hire.
+- Edits to the provided file are tracked (lines added and removed in each submission) and shown on the
+  scorecard and in the grading packet, for the "consistency with the provided code" review.

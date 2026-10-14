@@ -44,3 +44,19 @@ export function behavioralPhases(questions: number): Phase[] {
     { id: "wrapup", label: "Your questions", minutes: 3 },
   ];
 }
+
+/**
+ * Low-level design (spec §8.3): the requirement change arrives at 60% of the time. For 45 minutes:
+ * introductions 2, design 8, implement 17 (to minute 27), new requirement 13, wrap-up 5.
+ */
+export function lldPhases(minutes: number): Phase[] {
+  const at = (f: number) => Math.round(minutes * f);
+  const design = Math.max(5, Math.round(minutes * 0.18));
+  return [
+    { id: "intro", label: "Introductions", minutes: 2 },
+    { id: "design", label: "Clarify and design", minutes: design },
+    { id: "implement", label: "Implementation", minutes: at(0.6) - 2 - design },
+    { id: "change", label: "New requirement", minutes: at(0.9) - at(0.6) },
+    { id: "wrapup", label: "Follow-ups and questions", minutes: minutes - at(0.9) },
+  ];
+}

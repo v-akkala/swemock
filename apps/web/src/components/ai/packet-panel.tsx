@@ -13,7 +13,9 @@ export type PacketKind =
   | "resume-feedback"
   | "behavioral-live"
   | "behavioral-grading"
-  | "behavioral-rewrite";
+  | "behavioral-rewrite"
+  | "lld-interview-live"
+  | "lld-grading";
 type Kind = PacketKind;
 
 interface Packet {
@@ -31,6 +33,7 @@ export function PacketPanel(props: {
   kind: Kind;
   sessionId?: string;
   slug?: string;
+  itemType?: "dsa" | "lld";
   /** For approach checks: read the current approach text when the packet is built. */
   getApproach?: () => string;
   title: string;
@@ -54,6 +57,7 @@ export function PacketPanel(props: {
         kind: props.kind,
         sessionId: props.sessionId,
         slug: props.slug,
+        itemType: props.itemType,
         approach: props.getApproach?.(),
       });
       setPacket(p);

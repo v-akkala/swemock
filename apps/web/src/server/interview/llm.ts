@@ -11,7 +11,7 @@ import type { AnswerMeta, ChatPayload } from "./chat";
 import { chatMessages, latestCode, latestJudgeResult, requireActive, roundCtx } from "./engine";
 import { phasePlanText, totalMinutes } from "./phases";
 import { roundFor } from "./rounds";
-import { behavioralLlm, recruiterLlm, timeLines, type LlmRound } from "./rounds/llm";
+import { behavioralLlm, lldLlm, recruiterLlm, timeLines, type LlmRound } from "./rounds/llm";
 import { readState, writeState, type InterviewState } from "./state";
 
 const NUDGE = "<<nudge>>";
@@ -92,7 +92,7 @@ const dsaLlm: LlmRound = {
 };
 
 function llmRound(session: SessionRow): LlmRound {
-  return session.roundType === "recruiter" ? recruiterLlm : session.roundType === "behavioral" ? behavioralLlm : dsaLlm;
+  return session.roundType === "recruiter" ? recruiterLlm : session.roundType === "behavioral" ? behavioralLlm : session.roundType === "lld" ? lldLlm : dsaLlm;
 }
 
 function transcript(sessionId: string): ChatMessage[] {

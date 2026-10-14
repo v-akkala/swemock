@@ -78,3 +78,24 @@ questions share a title or prompt (checked against every question already on dis
 Key points and strong-answer signals are **private**: the browser sees a CS question's prompt, and the
 key points appear only after the candidate answers (recruiter screen) or in the debrief. A behavioral
 question's follow-ups, signals, and red flags appear only in the debrief.
+
+# Adding low-level design (LLD) problems
+
+LLD problems are folders under `content/lld/<slug>/` with the spec, a design write-up, a Mermaid diagram,
+the requirement change, and per language a starter, a reference, and three groups of tests (visible, hidden,
+extension). Needs Docker and the sandbox images, like DSA.
+
+```bash
+pnpm content:new lld my-system --title "My System" --difficulty medium   # scaffold: a tiny working example
+# edit problem.yaml, spec.md, design.md, diagram.mmd, change.md, python/..., cpp/...
+pnpm content:validate lld/my-system                                        # runs the reference and the starter against every test
+```
+
+The validator checks: the manifest and files; test names carry a category and sit in the right folder; the
+reference passes every visible, hidden, and extension test (the extension tests run as their own build, as in
+the app); the starter builds and fails; hidden tests are recognized as hidden; the diagram is a `classDiagram`.
+Full guide, also usable as a brief for an AI drafting tool: `prompts/authoring/lld.md`.
+
+In the app a problem appears at `/lld`. In practice the candidate runs the visible tests any time and
+submits to run the hidden ones (results show only counts per category and "Hidden test #k"); a "requirement
+change" button brings in the extension tests. In an interview the change arrives by itself at 60% of the time.

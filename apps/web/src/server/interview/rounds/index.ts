@@ -2,6 +2,7 @@ import "server-only";
 import type { SessionRow } from "../../dsa/store";
 import { behavioralRound } from "./behavioral";
 import { dsaRound } from "./dsa";
+import { lldRound } from "./lld";
 import { recruiterRound } from "./recruiter";
 import type { Round } from "./types";
 
@@ -13,6 +14,8 @@ export function roundFor(session: Pick<SessionRow, "roundType">): Round {
       return recruiterRound;
     case "behavioral":
       return behavioralRound;
+    case "lld":
+      return lldRound;
     default:
       return dsaRound;
   }

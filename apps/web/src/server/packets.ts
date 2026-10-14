@@ -2,6 +2,7 @@ import "server-only";
 import { LANGUAGE_LABELS, LANGUAGES, generateStub } from "@swemock/shared";
 import { DSA_INTERVIEW_RUBRIC, aiGradeSchema, checkGradeAgainstRubric, exampleGrade, extractJsonBlock, type Rubric } from "@swemock/shared/scoring";
 import { getDsa, getDsaPrivate } from "./content/repo";
+import { getLld, getLldPrivate } from "./content/lld";
 import { ApiError } from "./http/errors";
 import { buildLeakFilter } from "./ai/leak-filter";
 import { completeJson, completeText } from "./ai/run";
@@ -25,6 +26,7 @@ import {
   storedFeedback,
   type FeedbackKind,
 } from "./packets-conversation";
+import { lldGrading, lldLive } from "./packets-lld";
 import { dsaMetrics, saveAiGrade, type ScorecardView } from "./scoring/scorecard";
 
 /**
@@ -131,20 +133,39 @@ function dsaGradingPacket(session: SessionRow): Packet {
 
 // ---- approach check -------------------------------------------------------------------------------------
 
-function approachSession(slug: string, sessionId?: string): SessionRow {
-  const problem = getDsa(slug);
-  if (!problem) throw new ApiError(404, "That problem doesn't exist.");
-  const existing = sessionId ? getSession(sessionId) : null;
-  if (existing && existing.status === "active" && existing.itemId === problem.id && existing.mode === "practice") return existing;
-  return activePracticeSession(problem.id) ?? startSession({ itemId: problem.id, mode: "practice" });
+type ItemType = "dsa" | "lld";
+
+/** What an approach check needs to know about a problem, whichever kind it is. */
+function approachItem(type: ItemType, slug: string): { id: string; title: string; statement: string; secrets: { code: string[]; prose: string[] } } {
+  if (type === "lld") {
+    const p = getLld(slug);
+    if (!p) throw new ApiError(404, "That problem doesn't exist.");
+    const priv = getLldPrivate(slug)!;
+    return {
+      id: p.id,
+      title: p.pub.title,
+      statement: `${p.pub.specMd}\n\n(This is a low-level design problem: judge the design, meaning the classes, who owns what, and the data structures, not an algorithm.)`,
+      secrets: { code: Object.values(priv.languages).flatMap((l) => Object.values(l!.reference)), prose: [priv.designMd] },
+    };
+  }
+  const p = getDsa(slug);
+  if (!p) throw new ApiError(404, "That problem doesn't exist.");
+  const priv = getDsaPrivate(slug)!;
+  return { id: p.id, title: p.pub.title, statement: p.pub.statementMd, secrets: { code: Object.values(priv.references).filter((s): s is string => Boolean(s)), prose: [priv.editorialMd] } };
 }
 
-function approachPacket(slug: string, approach: string, sessionId?: string): Packet {
+function approachSession(item: { id: string }, type: ItemType, sessionId?: string): SessionRow {
+  const existing = sessionId ? getSession(sessionId) : null;
+  if (existing && existing.status === "active" && existing.itemId === item.id && existing.mode === "practice") return existing;
+  return activePracticeSession(item.id) ?? startSession({ itemId: item.id, mode: "practice", roundType: type });
+}
+
+function approachPacket(type: ItemType, slug: string, approach: string, sessionId?: string): Packet {
   if (!approach.trim()) throw new ApiError(400, "Describe your approach first.");
-  const session = approachSession(slug, sessionId);
-  const pub = getDsa(slug)!.pub;
+  const item = approachItem(type, slug);
+  const session = approachSession(item, type, sessionId);
   const t = loadTemplate("packets/approach-check.md");
-  const markdown = render(t.body, { title: pub.title, statement: pub.statementMd, approach: approach.trim() });
+  const markdown = render(t.body, { title: item.title, statement: item.statement, approach: approach.trim() });
   return { kind: "approach-check", markdown, filename: `swemock-approach-${slug}.md`, versionTag: t.versionTag, sessionId: session.id };
 }
 
@@ -153,21 +174,22 @@ function gradingFor(session: SessionRow): { packet: Packet; rubric: Rubric } {
   if (session.mode !== "interview") throw new ApiError(400, "Grading packets are for interviews.");
   if (session.roundType === "recruiter") return recruiterGrading(session);
   if (session.roundType === "behavioral") return behavioralGrading(session);
+  if (session.roundType === "lld") return lldGrading(session);
   return { packet: dsaGradingPacket(session), rubric: DSA_INTERVIEW_RUBRIC };
 }
 
-const GRADING_KINDS: Partial<Record<PacketKind, string>> = { "dsa-grading": "dsa", "recruiter-grading": "recruiter", "behavioral-grading": "behavioral" };
-const LIVE_KINDS: Partial<Record<PacketKind, string>> = { "dsa-interview-live": "dsa", "recruiter-live": "recruiter", "behavioral-live": "behavioral" };
+const GRADING_KINDS: Partial<Record<PacketKind, string>> = { "dsa-grading": "dsa", "recruiter-grading": "recruiter", "behavioral-grading": "behavioral", "lld-grading": "lld" };
+const LIVE_KINDS: Partial<Record<PacketKind, string>> = { "dsa-interview-live": "dsa", "recruiter-live": "recruiter", "behavioral-live": "behavioral", "lld-interview-live": "lld" };
 
 function requireRound(session: SessionRow, kind: PacketKind): void {
   const want = GRADING_KINDS[kind] ?? LIVE_KINDS[kind] ?? (kind === "resume-feedback" ? "recruiter" : kind === "behavioral-rewrite" ? "behavioral" : null);
   if (want && session.roundType !== want) throw new ApiError(400, "That packet doesn't belong to this kind of interview.");
 }
 
-export function renderPacket(req: { kind: PacketKind; sessionId?: string; slug?: string; approach?: string }): Packet {
+export function renderPacket(req: { kind: PacketKind; sessionId?: string; slug?: string; approach?: string; itemType?: ItemType }): Packet {
   if (req.kind === "approach-check") {
     if (!req.slug) throw new ApiError(400, "Missing problem.");
-    return approachPacket(req.slug, req.approach ?? "", req.sessionId);
+    return approachPacket(req.itemType ?? "dsa", req.slug, req.approach ?? "", req.sessionId);
   }
   const session = req.sessionId ? getSession(req.sessionId) : null;
   if (!session) throw new ApiError(404, "Unknown session.");
@@ -179,6 +201,8 @@ export function renderPacket(req: { kind: PacketKind; sessionId?: string; slug?:
       return recruiterLive(session);
     case "behavioral-live":
       return behavioralLive(session);
+    case "lld-interview-live":
+      return lldLive(session);
     case "resume-feedback":
       return resumeFeedbackPacket(session);
     case "behavioral-rewrite":
@@ -256,6 +280,7 @@ export function pasteReply(sessionId: string, kind: PacketKind, text: string): P
 const GRADER_SYSTEM: Record<string, string> = {
   dsa: "You grade mock coding interviews for a hiring committee. Follow the instructions in the user's message exactly.",
   recruiter: "You grade mock recruiter screens for a hiring committee. Follow the instructions in the user's message exactly.",
+  lld: "You grade mock low-level design interviews for a hiring committee. Follow the instructions in the user's message exactly.",
   behavioral: "You grade mock behavioral interviews for a hiring committee. Follow the instructions in the user's message exactly.",
 };
 
@@ -313,9 +338,9 @@ export { storedFeedback };
 const APPROACH_SAFE = "Doesn't work as a request: I can only judge an approach, not write or reveal one. Describe your plan in words.";
 
 /** Approach Check (spec §7.8), connected: the fast model gives a verdict and a line of why, never code. */
-export async function approachCheck(slug: string, approach: string, sessionId?: string): Promise<{ sessionId: string; reply: string }> {
-  const packet = approachPacket(slug, approach, sessionId);
-  const priv = getDsaPrivate(slug)!;
+export async function approachCheck(slug: string, approach: string, sessionId?: string, type: ItemType = "dsa"): Promise<{ sessionId: string; reply: string }> {
+  const packet = approachPacket(type, slug, approach, sessionId);
+  const secrets = approachItem(type, slug).secrets;
   const reply = await completeText({
     role: "fast",
     purpose: "approach",
@@ -326,7 +351,7 @@ export async function approachCheck(slug: string, approach: string, sessionId?: 
     temperature: 0,
     effort: "low",
   });
-  const filter = buildLeakFilter({ code: Object.values(priv.references).filter((s): s is string => Boolean(s)), prose: [priv.editorialMd] }, { blockCodeBlocks: true });
+  const filter = buildLeakFilter(secrets, { blockCodeBlocks: true });
   const leaked = filter.check(reply).leaked || /```/.test(reply);
   const text = leaked ? APPROACH_SAFE : reply.trim();
   addEvent(packet.sessionId, "approach_check", { approach: approach.trim(), reply: text, via: "ai", filtered: leaked });

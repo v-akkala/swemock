@@ -12,6 +12,8 @@ export const PACKET_KINDS = [
   "behavioral-live",
   "behavioral-grading",
   "behavioral-rewrite",
+  "lld-interview-live",
+  "lld-grading",
 ] as const;
 export type PacketKind = (typeof PACKET_KINDS)[number];
 

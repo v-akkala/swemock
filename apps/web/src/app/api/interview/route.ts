@@ -3,6 +3,7 @@ import { resolveAi } from "@/server/ai/config";
 import { ApiError, handle, readJson } from "@/server/http/errors";
 import { startInterview } from "@/server/interview/engine";
 import { startBehavioral } from "@/server/interview/rounds/behavioral";
+import { startLldInterview } from "@/server/interview/rounds/lld";
 import { startRecruiter } from "@/server/interview/rounds/recruiter";
 import { getResumeText } from "@/server/resume/store";
 
@@ -11,6 +12,7 @@ export const dynamic = "force-dynamic";
 /** ai: the configured model interviews; scripted: no AI; packet: the interview runs in another chat. */
 const interviewer = z.enum(["ai", "scripted", "packet"]);
 
+const lld = z.object({ round: z.literal("lld"), slug: z.string().min(1).max(100), interviewer });
 const dsa = z.object({ round: z.literal("dsa").optional(), slug: z.string().min(1).max(100), interviewer });
 const recruiter = z.object({
   round: z.literal("recruiter"),
@@ -31,7 +33,7 @@ const behavioral = z.object({
 
 export function POST(request: Request) {
   return handle(async () => {
-    const body = await readJson(request, z.union([recruiter, behavioral, dsa]));
+    const body = await readJson(request, z.union([recruiter, behavioral, lld, dsa]));
     if (body.interviewer === "ai" && !resolveAi().connected) throw new ApiError(409, resolveAi().problem ?? "No AI provider is configured.");
     const common = {
       driver: body.interviewer === "ai" ? ("llm" as const) : ("scripted" as const),
@@ -54,6 +56,7 @@ export function POST(request: Request) {
       const session = startBehavioral({ ...common, count: body.count, lens: body.lens, focus: body.focus });
       return Response.json({ id: session.id });
     }
+    if (body.round === "lld") return Response.json({ id: startLldInterview({ slug: body.slug, ...common }).id });
     return Response.json({ id: startInterview({ slug: body.slug, ...common }).id });
   });
 }

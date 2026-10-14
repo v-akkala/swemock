@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { loadBehavioralItem, loadCsItem, loadDsaItem } from "@swemock/content";
+import { loadBehavioralItem, loadCsItem, loadDsaItem, loadLldItem } from "@swemock/content";
 import { validateTestInput } from "@swemock/shared";
 import { describe, expect, it } from "vitest";
 import { validateQuestion } from "./questions";
@@ -23,6 +23,19 @@ describe("scaffoldDsa", () => {
   it("refuses bad slugs and existing folders", () => {
     expect(() => scaffoldDsa(root, "Bad_Slug", {})).toThrow(/not a valid slug/);
     expect(() => scaffoldDsa(root, "my-new-problem", {})).toThrow(/already exists/);
+  });
+});
+
+describe("LLD scaffold", () => {
+  it("loads with the real loader, has both languages, and keeps the SCAFFOLD marker", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "swemock-scaffold-lld-"));
+    const dir = scaffold("lld", root, "my-system", { title: "My System", difficulty: "hard" });
+    const item = loadLldItem(dir);
+    expect(item.manifest).toMatchObject({ title: "My System", difficulty: "hard", format: "class" });
+    expect(Object.keys(item.languages).sort()).toEqual(["cpp", "python"]);
+    expect(Object.keys(item.languages.python!.tests.extension)).toEqual(["tests/extension/test_extension.py"]);
+    expect(item.languages.python!.reference["tally.py"]).toContain("class Tally");
+    expect(fs.readFileSync(path.join(dir, "problem.yaml"), "utf8")).toContain("SCAFFOLD");
   });
 });
 
