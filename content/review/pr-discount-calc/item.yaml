@@ -1,0 +1,45 @@
+title: Discount calculation
+difficulty: easy
+tags: [testing]
+source: authored
+reviewed: false
+version: 1
+language: python
+minutes: 25
+
+pr:
+  title: Add apply_discount for percentage discounts
+  description: |
+    Adds `apply_discount(total_cents, percent, cap_cents=None)` to `pricing.py`.
+
+    - Works in integer cents; the discount is rounded half up with integer arithmetic (no floats).
+    - `percent` must be 0..100, otherwise ValueError.
+    - An optional cap limits the discount.
+
+    Tests in `test_discounts.py` cover rounding, the cap, the boundaries, and invalid input.
+
+decision: approve
+
+issues:
+  - id: unused-import
+    file: pricing.py
+    lines: [1, 1]
+    category: style
+    severity: low
+    title: "`math` is imported but never used"
+    explanation: A leftover import; a linter will flag it. Not worth blocking the PR.
+  - id: magic-arithmetic
+    file: pricing.py
+    lines: [16, 16]
+    category: style
+    severity: low
+    title: The rounding expression deserves a comment
+    explanation: "`(total * percent * 2 + 100) // 200` is correct round-half-up arithmetic, but a reader has to work out why; a one-line comment would help."
+
+acceptable:
+  - { file: pricing.py, lines: [16, 16], category: logic-error, note: "The integer rounding is correct for whole-number percentages." }
+
+questions:
+  - This PR is correct. What makes you comfortable approving it?
+  - Which of your comments would you mark as non-blocking, and how?
+  - Would you ask for anything about fractional percentages?

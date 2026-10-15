@@ -1,0 +1,51 @@
+title: File upload subfolders
+difficulty: medium
+tags: [security, http]
+source: authored
+reviewed: false
+version: 1
+language: python
+minutes: 30
+
+pr:
+  title: Allow uploads into subfolders
+  description: |
+    Uploaded files used to be flattened to their base name, so `reports/2024/q1.csv` became `q1.csv` and
+    collided with other reports. This keeps the folder structure under `uploads/`.
+
+    Tests: `test_uploads_nested.py`.
+
+decision: reject
+
+issues:
+  - id: path-traversal
+    file: uploads.py
+    lines: [15, 15]
+    category: security
+    severity: high
+    title: Path traversal in the file name
+    explanation: "The name is joined to the upload folder unchecked, so `../../etc/cron.d/x` writes outside `uploads/`. The old `os.path.basename` was the protection and this PR removed it without replacing it."
+    fix: { file: uploads.py, old: "    path = os.path.join(root, UPLOAD_DIR, filename)", new: "    folder = os.path.realpath(os.path.join(root, UPLOAD_DIR))\n    path = os.path.realpath(os.path.join(folder, filename))\n    if os.path.commonpath([folder, path]) != folder:\n        raise ValueError(\"invalid file name\")" }
+  - id: hard-coded-secret
+    file: uploads.py
+    lines: [8, 8]
+    category: security
+    severity: high
+    title: A live signing key is committed to the source
+    explanation: "`SIGNING_KEY` looks like a production secret; anyone with repository access can forge download links, and it stays in git history even if it is removed later. It should come from the environment or a secret store and be rotated."
+    fix: { file: uploads.py, old: "SIGNING_KEY = \"sk_live_51Hq9x7Kd2LmN0pQ\"", new: "SIGNING_KEY = os.environ.get(\"UPLOAD_SIGNING_KEY\", \"\")" }
+  - id: scope-creep
+    file: uploads.py
+    lines: [22, 39]
+    category: scope-creep
+    severity: medium
+    title: Unrelated link signing and a destructive purge helper are bundled in
+    explanation: "The PR is about subfolders. `signed_url` and `purge_old_uploads` are unrelated features: the purge deletes files, has no dry-run, no tests, and is not mentioned in the description. They should be separate PRs with their own review."
+
+acceptable:
+  - { file: uploads.py, lines: [17, 19], category: style, note: "makedirs on the parent of the path is fine once the path is validated." }
+
+questions:
+  - Which finding blocks this PR on its own, and why?
+  - How would you ask the author to split the PR?
+  - What would a regression test for the traversal look like?

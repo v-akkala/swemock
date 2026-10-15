@@ -1,0 +1,52 @@
+title: Product search
+difficulty: medium
+tags: [http, security]
+source: authored
+reviewed: false
+version: 1
+language: python
+minutes: 35
+
+pr:
+  title: Add product search and match count
+  description: |
+    Adds `search_products(conn, term, limit)` and `count_matches(conn, term)` for the new search box.
+    Results include the category name. Search uses parameterized queries.
+
+    Test: `test_search.py`.
+
+decision: request_changes
+
+issues:
+  - id: sql-injection
+    file: search.py
+    lines: [3, 3]
+    category: security
+    severity: high
+    title: The search term and limit are interpolated into the SQL
+    explanation: "An f-string builds the query, so a term like `%' OR 1=1 --` changes its meaning. The description says queries are parameterized; only `count_matches` is."
+    fix: { file: search.py, old: "    rows = conn.execute(f\"SELECT id, name, category_id FROM products WHERE name LIKE '%{term}%' LIMIT {limit}\").fetchall()", new: "    rows = conn.execute(\"SELECT id, name, category_id FROM products WHERE name LIKE ? LIMIT ?\", (f\"%{term}%\", limit)).fetchall()" }
+  - id: n-plus-one
+    file: search.py
+    lines: [4, 8]
+    category: performance
+    severity: medium
+    title: One extra query per result to fetch the category
+    explanation: "With a limit of 20 this is 21 queries per search. A join, or one `IN` query for all category ids, does it in one or two."
+    fix: { file: search.py, old: "    results = []\n    for product_id, name, category_id in rows:\n        category = conn.execute(\"SELECT name FROM categories WHERE id = ?\", (category_id,)).fetchone()[0]\n        results.append({\"id\": product_id, \"name\": name, \"category\": category})\n    return results", new: "    ids = sorted({row[2] for row in rows})\n    marks = \",\".join(\"?\" * len(ids))\n    names = dict(conn.execute(f\"SELECT id, name FROM categories WHERE id IN ({marks})\", ids).fetchall())\n    return [{\"id\": pid, \"name\": name, \"category\": names.get(cid)} for pid, name, cid in rows]" }
+  - id: nonexistent-method
+    file: search.py
+    lines: [13, 13]
+    category: hallucinated-api
+    severity: high
+    title: "`fetchone_or_none` does not exist"
+    explanation: sqlite3 cursors have `fetchone()`, which already returns None when there is no row. `count_matches` raises AttributeError on every call, and no test in the PR calls it.
+    fix: { file: search.py, old: ".fetchone_or_none()", new: ".fetchone()" }
+
+acceptable:
+  - { file: search.py, lines: [12, 14], category: style, note: "Returning 0 when there is no row is harmless; COUNT(*) always returns a row." }
+
+questions:
+  - Which of these would you block the merge on, and which could be follow-ups?
+  - Why did the author's test not catch the third problem?
+  - How would you write the SQL-injection test?

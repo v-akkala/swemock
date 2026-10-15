@@ -1,0 +1,54 @@
+title: Pagination helper
+difficulty: easy
+tags: [pagination, testing]
+source: authored
+reviewed: false
+version: 1
+language: python
+minutes: 30
+
+pr:
+  title: Add Catalog.page for paginated listings
+  description: |
+    Adds `Catalog.page(number, size=10)` for the new listings endpoint.
+
+    - Pages are 1-based and the last page may be short.
+    - Pages past the end return an empty list.
+    - `size` is validated to be between 1 and 100.
+
+    Tests added in `test_catalog_pages.py`.
+
+decision: request_changes
+
+issues:
+  - id: page-drops-last-item
+    file: catalog.py
+    lines: [12, 13]
+    category: off-by-one
+    severity: high
+    title: Every page is one item short
+    explanation: "`end = start + size - 1` with a slice (end is exclusive) drops the last item of each page, so a page of 2 returns 1 item and the dropped item is never shown on any page."
+    fix: { file: catalog.py, old: "end = start + size - 1", new: "end = start + size" }
+  - id: size-not-validated
+    file: catalog.py
+    lines: [11, 12]
+    category: description-mismatch
+    severity: medium
+    title: The description says size is validated but nothing validates it
+    explanation: "A size of 0 returns an empty page forever and a negative size returns items from the wrong end; the described 1..100 check does not exist."
+    fix: { file: catalog.py, old: "        start = (number - 1) * size", new: "        if not 1 <= size <= 100:\n            raise ValueError(\"size must be between 1 and 100\")\n        start = (number - 1) * size" }
+  - id: hollow-tests
+    file: test_catalog_pages.py
+    lines: [4, 11]
+    category: hollow-test
+    severity: medium
+    title: The new tests cannot fail on the bug
+    explanation: They check the type and that a page is "not longer than" size, never which items come back, so the off-by-one and missing validation pass unnoticed.
+
+acceptable:
+  - { file: catalog.py, lines: [8, 9], category: style, note: "all() returning a copy is fine for a read-only collection." }
+
+questions:
+  - What would you want the tests to assert before you approve this?
+  - The listings endpoint will call this with user-supplied page numbers. What else would you check?
+  - How do you word a review comment about the missing validation so it is actionable?
