@@ -47,6 +47,14 @@ function reply(req: ChatRequest): string {
       };
       return `Here is my assessment.\n\n\`\`\`json\n${JSON.stringify(grade, null, 2)}\n\`\`\`\n`;
     }
+    case "assistant": {
+      const asked = lastUser(req);
+      if (asked.includes("NOCODE")) return "[fake assistant] Here is an explanation without any code: the function loops once and returns early.";
+      const m = /### (\S+)[^\n]*\n```\n([\s\S]*?)\n```/.exec(req.context ?? "");
+      if (!m) return "[fake assistant] I can't see any attached file; attach one and ask again.";
+      const helper = "\n\ndef fake_assistant_helper(values, start=0):\n    total = start\n    for i in range(len(values)):\n        if values[i] < 10:\n            total += values[i]\n    return total\n";
+      return `[fake assistant] I added a helper to ${m[1]}.\n\n\`\`\`python path=${m[1]}\n${m[2]!.replace(/\n$/, "")}${helper}\`\`\`\n`;
+    }
     case "feedback": {
       const text = lastUser(req);
       // Candidate lines from the transcript: the fake only ever rewords what was actually said.

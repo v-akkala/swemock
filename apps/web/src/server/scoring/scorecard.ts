@@ -23,6 +23,7 @@ import {
 import { getDb } from "../db";
 import { scorecards } from "../db/schema";
 import { getSession, sessionEvents, type SessionRow } from "../dsa/store";
+import { fluencyAuto } from "../fluency/metrics";
 import { answerTurns } from "../interview/answers";
 import { readState } from "../interview/state";
 
@@ -89,7 +90,11 @@ export function lldMetrics(session: SessionRow): LldMetrics {
 }
 
 /** Auto scores and the metric lines the debrief shows, per round type. */
-function autoFor(session: SessionRow): { scores: SourcedScore[]; lines: string[]; dsa: DsaMetrics | null; behavioral: BehavioralMetrics | null; lld?: LldMetrics } {
+function autoFor(session: SessionRow): { scores: SourcedScore[]; lines: string[]; dsa: DsaMetrics | null; behavioral: BehavioralMetrics | null; lld?: LldMetrics; fluencyFailed?: boolean } {
+  if (session.roundType === "comprehension" || session.roundType === "review" || session.roundType === "extension") {
+    const a = fluencyAuto(session);
+    return { scores: a.scores, lines: a.lines, dsa: null, behavioral: null, fluencyFailed: session.roundType === "extension" ? !a.extension?.solved : false };
+  }
   if (session.roundType === "lld") {
     const m = lldMetrics(session);
     return {
@@ -206,7 +211,7 @@ function view(session: SessionRow, card: StoredCard): ScorecardView {
     behavioral: auto.behavioral,
     scores,
     final,
-    recommendation: recommend(rubric, scores, { failedHiddenTests: auto.dsa ? !auto.dsa.accepted : auto.lld ? !auto.lld.solved : false }),
+    recommendation: recommend(rubric, scores, { failedHiddenTests: auto.dsa ? !auto.dsa.accepted : auto.lld ? !auto.lld.solved : (auto.fluencyFailed ?? false) }),
     selfTicked: card.selfTicked,
     ai: card.ai,
     formulaVersion: FORMULA_VERSION,

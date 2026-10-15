@@ -63,11 +63,22 @@
   - **Scoring**: LLD rubric (working code auto from tests; separation of concerns, patterns, naming and encapsulation, errors and extensibility, complexity, consistency with the provided code, communication via self/AI); recommendation capped when core/edge tests fail. docs/scoring.md.
   - **Tests**: shared 48, content 10, scripts 5, web 86 (adds LLD service with a mocked judge: masking, extension runs, build-error masking, edit tracking, hints, drafts, interview phases, scoring, packets), e2e 37 (new `lld.spec.ts`: 9 — list, practice in both languages, requirement change, system format with edit tracking, hints and diagram, approach check, scripted/AI/external-chat interviews). `content:validate --all` passes (73 items).
 
-## In progress
-- Nothing. Waiting for the user to test M5.
+- **M6 — AI Fluency**
+  - **Three content types** with scaffolds (`content:new comprehension|review|extension`), validators that prove every claim in the sandbox (a planted bug has a failing `test_bug_<id>` that its exact-replacement fix repairs; a correct PR passes the hidden tests; extension acceptance tests fail before and pass with the reference), and authoring briefs (`prompts/authoring/{comprehension,review,extension}.md`, docs/adding-problems.md).
+  - **12 items (4 per type, Python)**: comprehension: CSV sales pipeline, HTTP response cache, session manager, event scheduler (4–7 planted bugs each, decisions, improvements, acceptable findings, design questions); review: pagination helper, file upload, discount calculation (a correct PR: approve with nits), product search; extension: todo API (tags and filtering), expense CLI (recurring expenses and budget alerts), job queue (exponential backoff and dead letters), booking service (waitlist). Each extension repo has CONVENTIONS.md, a ticket, existing tests, hidden acceptance and regression tests, and a reference.
+  - **Workspace** (`/ai-fluency`, `/ai-fluency/<type>/<slug>`): file tree, Monaco tabs, new test files, run panel limited to the manifest's commands, console with per-test results, autosave; line-anchored findings with category and severity (gutter marks, editable line range), summary box; PR view with unified and split diffs, inline comments, approve / request changes / reject, and "Fix it" checked against hidden tests; extension ticket and "Submit" with hidden acceptance and regression tests masked as "Hidden test #k"; "Finish and see results" in practice.
+  - **AI assistant panel**: connected (the `assistant` model role) or packet flow (copy the prompt, paste the reply back); attach a file or a selection; code blocks become a per-hunk diff preview with accept and reject; every prompt, attachment, reply, and applied hunk is logged.
+  - **Fallible mode** (Settings, off by default, every provider): about one in five code-producing replies gets one mutation (off-by-one, flipped comparison, removed check, swapped arguments, changed default, dropped close or await), kept only if the sandbox parses it; hidden until the debrief, which shows each one and whether it was caught (hunk rejected or lines fixed).
+  - **Interviews**: scripted, AI, and external-chat drivers for all three rounds (phases scale with the item's length, the authored questions lead the discussion phases), live and grading packets, AI or pasted grading.
+  - **Scoring**: three rubrics; auto scores for bug recall, precision, severity calibration, decision, fix, acceptance, regression, verification, time, and AI use (docs/scoring.md); borderline matches are confirmed by the candidate in the debrief and the scorecard updates; extension capped at Lean No Hire when nothing passed.
+  - **Tests**: shared 67, content 10, scripts 12 (scaffolds, static validation, `applyFix`), web 112 (adds the fluency service with a mocked judge: sanitizing, masking, findings, assistant blocks, fallible mode injection and catch detection for connected and pasted replies, the sandbox parse check; round adapter, packets, debrief, scorecard), e2e 49 (new `fluency.spec.ts`: 12). `content:validate --all` passes (85 items).
+  - Fixed along the way: assistant proposals keep a file's trailing newline (no phantom hunk), and a borderline decision in the debrief updates the page at once.
 
-## Next: M6 — AI Fluency
-CoderPad-like workspace, assistant panel (connected and packet), diff preview with per-hunk apply, full logging; Fallible mode (AST/token-level mutation operators, syntax re-check in the sandbox, catch detection); code comprehension (gutter annotations + matching), AI-generated code review (PR view), feature extension in an existing repo; 4 items each, in Python or C++.
+## In progress
+- Nothing. Waiting for the user to test M6.
+
+## Next: M7 — ML rounds
+ML fundamentals (80 questions), ML coding, ML system design, with the fundamentals quiz and flashcards (spaced repetition for CS and ML questions); see PLAN.md.
 
 ## Known issues
 - Ollama and real Anthropic calls are implemented and unit-tested with mocked HTTP, but weren't exercised against live services here (no Ollama install; no paid API calls by policy). Test connection in Settings checks both.
@@ -76,10 +87,15 @@ CoderPad-like workspace, assistant panel (connected and packet), diff preview wi
 - C++ LLD runs compile on every Run (about 5–10 s); there is no warm pool.
 - The live packet for an LLD interview in another chat contains the requirement change text (the other chat has to introduce it).
 
+- AI Fluency items are Python only. C++ works through manifest `commands` but no C++ item ships and it is untested. Codebases and repos are smaller than the spec's ranges (comprehension 166–198 lines against 200–500; extension about 330 lines against 500–2000); `content:validate` warns.
+- Fallible mode's C++ mutation check uses `g++ -fsyntax-only`, which is untested because no C++ AI Fluency item exists.
+- Real models were not used to produce assistant replies here (no paid calls); the fake provider's replies are canned, so the quality of a connected assistant's code blocks (the `path=` convention) is unverified.
+- A web unit test (`dsa/service.test.ts`, the online assessment deadline) failed once under parallel load and passed on every rerun; it depends on wall-clock timing.
+
 ## Cut scope
 - Java and Node/TypeScript languages (user decision during M1); the runner remains pluggable.
 - Warm container pool (optional per spec) — Python runs take ~0.2 s and C++ ~0.6 s including compile (LLD C++ suites take longer).
 - Home-page dashboard for due reviews (M8); due reviews are listed on `/dsa` for now.
 - Persona/company presets for the interviewer prompt (`persona_suffix` placeholder) arrive with company presets in M8.
 - Spaced repetition and a standalone quiz for CS questions: arrives with the fundamentals quiz and flashcards in M7. MCQ questions are supported by the schema but none ship yet.
-- Remaining content toward the v1.0 targets (DSA 15 of 50, CS 30 of 60, behavioral 20 of 40, LLD 8 of 12) is M9. C++ versions of the four "complete the system" LLD problems are not written.
+- Remaining content toward the v1.0 targets (DSA 15 of 50, CS 30 of 60, behavioral 20 of 40, LLD 8 of 12, comprehension 4 of 6, review 4 of 8, extension 4 of 4 though smaller than the spec's line counts) is M9. C++ versions of the four "complete the system" LLD problems are not written.

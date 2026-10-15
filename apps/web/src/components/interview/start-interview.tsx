@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 type Interviewer = "ai" | "scripted" | "packet";
 
 /** Starts a timed mock interview on this problem with the chosen kind of interviewer. */
-export function StartInterview({ slug, aiConnected, round = "dsa", minutes = 50 }: { slug: string; aiConnected: boolean; round?: "dsa" | "lld"; minutes?: number }) {
+export function StartInterview({ slug, aiConnected, round = "dsa", minutes = 50, fluencyType }: { slug: string; aiConnected: boolean; round?: "dsa" | "lld" | "fluency"; minutes?: number; fluencyType?: "comprehension" | "review" | "extension" }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [choice, setChoice] = useState<Interviewer>(aiConnected ? "ai" : "scripted");
@@ -19,7 +19,7 @@ export function StartInterview({ slug, aiConnected, round = "dsa", minutes = 50 
     setBusy(true);
     setError(null);
     try {
-      const { id } = await api<{ id: string }>("/api/interview", "POST", { round, slug, interviewer: choice });
+      const { id } = await api<{ id: string }>("/api/interview", "POST", { round, slug, interviewer: choice, ...(fluencyType ? { type: fluencyType } : {}) });
       router.push(`/interview/${id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -46,7 +46,9 @@ export function StartInterview({ slug, aiConnected, round = "dsa", minutes = 50 
       {open && (
         <div role="dialog" aria-label="Start a mock interview" className="bg-background absolute right-0 z-20 mt-2 w-96 space-y-3 rounded-lg border border-border p-4 shadow-xl">
           <p className="text-sm">
-            {round === "lld"
+            {round === "fluency"
+              ? `A ${minutes}-minute interview with an interviewer chat, a strict clock, and the AI assistant. Everything you ask it and apply is logged for the debrief.`
+              : round === "lld"
               ? `A ${minutes}-minute design interview: clarify, design, implement, then a new requirement about 60% of the way in. Hints lower your score; the reference waits for the debrief.`
               : `A ${minutes}-minute interview with phases (clarify, approach, code, test) and a strict clock. Hints lower your score; the editorial waits for the debrief.`}
           </p>

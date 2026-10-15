@@ -1,7 +1,7 @@
 #!/usr/bin/env -S pnpm exec tsx
 /**
  * Content tooling:
- *   pnpm content:new <dsa|lld|cs|behavioral> <slug> [--title "Title"] [--difficulty easy|medium|hard]
+ *   pnpm content:new <dsa|lld|comprehension|review|extension|cs|behavioral> <slug> [--title "Title"] [--difficulty easy|medium|hard]
  *   pnpm content:gen <slug...|--all>        DSA only: run tests/gen.py, compute expected outputs, write tests/
  *   pnpm content:validate [type/slug...|--all|--type cs]   no arguments: only items changed vs main
  * DSA items need Docker and the sandbox images (docker compose build sandbox-python sandbox-cpp);
@@ -12,6 +12,7 @@ import path from "node:path";
 import { CONTENT_TYPES, itemDirs, type ContentType } from "@swemock/content";
 import { genDsa, validateDsa } from "./lib/dsa";
 import { createJudge } from "./lib/judge";
+import { validateComprehension, validateExtension, validateReview } from "./lib/fluency";
 import { validateLld } from "./lib/lld";
 import { registerQuestion, validateQuestion } from "./lib/questions";
 import { scaffold } from "./lib/scaffold";
@@ -80,7 +81,7 @@ async function main(): Promise<number> {
   if (cmd === "new") {
     const [type, slug] = args;
     if (!type || !(CONTENT_TYPES as readonly string[]).includes(type) || !slug) {
-      throw new Error("Usage: pnpm content:new <dsa|lld|cs|behavioral> <slug> [--title ...] [--difficulty ...]");
+      throw new Error("Usage: pnpm content:new <dsa|lld|comprehension|review|extension|cs|behavioral> <slug> [--title ...] [--difficulty ...]");
     }
     const dest = scaffold(type as ContentType, CONTENT, slug, { title: flag(args, "--title"), difficulty: flag(args, "--difficulty") });
     if (type === "dsa") {
@@ -91,6 +92,13 @@ Next:
   2. pnpm content:gen ${slug}        compute the hidden tests
   3. pnpm content:validate ${slug}   check everything
   4. Delete the SCAFFOLD line at the top of problem.yaml`);
+    } else if (type === "comprehension" || type === "review" || type === "extension") {
+      console.log(`Created ${path.relative(REPO, dest)}
+
+Next:
+  1. Edit item.yaml and the files under ${type === "comprehension" ? "code/, tests/, bugtests/" : type === "review" ? "base/, head/, tests/, tests_hidden/" : "repo/, tests_hidden/, reference/, ticket.md"} (guide: prompts/authoring/${type}.md)
+  2. pnpm content:validate ${type}/${slug}   runs the tests (Docker needed)
+  3. Delete the SCAFFOLD line at the top of item.yaml`);
     } else if (type === "lld") {
       console.log(`Created ${path.relative(REPO, dest)}
 
@@ -128,14 +136,24 @@ Next:
       return 0;
     }
     // Only DSA items need the sandbox; don't require Docker to check a batch of questions.
-    const judge = targets.some((t) => t.type === "dsa" || t.type === "lld") ? await createJudge() : null;
+    const judge = targets.some((t) => t.type !== "cs" && t.type !== "behavioral") ? await createJudge() : null;
     const seen = new Map<string, string>();
     for (const t of allTargets()) if (t.type === "cs" || t.type === "behavioral") registerQuestion(t.type, t.dir, seen);
     let failed = 0;
     for (const target of targets) {
       const started = Date.now();
       const report =
-        target.type === "dsa" ? await validateDsa(judge!, target.dir) : target.type === "lld" ? await validateLld(judge!, target.dir) : validateQuestion(target.type, target.dir, seen);
+        target.type === "dsa"
+          ? await validateDsa(judge!, target.dir)
+          : target.type === "lld"
+            ? await validateLld(judge!, target.dir)
+            : target.type === "comprehension"
+              ? await validateComprehension(judge!, target.dir)
+              : target.type === "review"
+                ? await validateReview(judge!, target.dir)
+                : target.type === "extension"
+                  ? await validateExtension(judge!, target.dir)
+                  : validateQuestion(target.type, target.dir, seen);
       const secs = ((Date.now() - started) / 1000).toFixed(1);
       if (report.errors.length === 0) console.log(`✓ ${label(target)} (${secs}s)`);
       else {

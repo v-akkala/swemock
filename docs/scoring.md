@@ -92,3 +92,49 @@ consistency with the provided code, and communication.
 - **Cap:** if the core and edge tests never all passed, the recommendation is at most Lean No Hire.
 - Edits to the provided file are tracked (lines added and removed in each submission) and shown on the
   scorecard and in the grading packet, for the "consistency with the provided code" review.
+
+## AI Fluency
+
+Three rounds share one workspace and one measure of how the assistant was used.
+
+**AI use** (all three; not scored when the assistant wasn't used, since not using it isn't penalized). Start
+at 2, then: +1 if every applied reply was followed by running code (at least half of them, or nothing was
+applied); +1 if the candidate pushed back or checked independently (rejected a hunk, wrote their own test, or
+caught an injected mistake); −1 if three or more replies were applied and the code was never run afterwards;
+−1 if fallible mode injected more mistakes than were caught. Clamped to 1–4. A mistake is *caught* when its
+hunk was rejected, or the changed lines were fixed (the original line is back, or the mutated line is gone).
+
+**Code comprehension** (auto: bug recall, precision, severity calibration, AI use; summary, design, and
+communication come from the self checklist or an AI grade)
+
+- Findings are matched to planted bugs by file, overlapping lines (±2), and category. The right place with the
+  wrong category is *borderline*: the debrief asks the candidate to confirm or reject it, and the scorecard
+  updates. A finding on an `acceptable` spot is not a false positive.
+- *Bug recall* (severity-weighted, weights 1–4): ≥ 85% → 4, ≥ 60% → 3, ≥ 30% → 2, else 1.
+- *Precision* (matched or acceptable over all findings): ≥ 85% → 4, ≥ 65% → 3, ≥ 40% → 2, else 1; reporting
+  nothing scores 1.
+- *Severity calibration* (1 when matched findings carry the planted severity, falling to 0 at three levels
+  off): ≥ 80% → 4, ≥ 60% → 3, ≥ 40% → 2, else 1; only when something matched.
+
+**AI-generated code review** (auto: decision, recall, precision, fix; comment quality and communication from
+the checklist or an AI grade)
+
+- *Decision*: the same call → 4; request changes versus reject → 3; approve versus request changes → 2;
+  approve versus reject → 1; no decision → 1.
+- *Recall* and *precision* as above. On a correct PR (nothing seeded) there is no recall, and every blocking
+  finding counts against precision.
+- *Fix* ("Fix it", checked against the hidden tests): all pass → 4, ≥ 75% → 3, ≥ 40% → 2, else 1.
+
+**Feature extension** (auto: acceptance, regression, verification, time; structural fit and prompting from
+the checklist or an AI grade)
+
+- *Acceptance* (best submission): all → 4, ≥ 75% → 3, ≥ 40% → 2, else 1. *Regression*: all → 4, ≥ 90% → 3,
+  ≥ 70% → 2, else 1.
+- *Verification*: start at 1; +1 for two or more test runs; +1 for writing or editing a test; with assistant
+  code applied, +1 if code was run after at least half the applies, +1 for rejecting a hunk or catching an
+  injected mistake, −1 if it was never run after applying; −1 if injected mistakes were missed.
+- *Time to a fully passing submission*: ≤ 60% of the time → 4, ≤ 80% → 3, otherwise 2; never → 1.
+- **Cap:** if no submission ever passed everything, the recommendation is at most Lean No Hire.
+
+Hidden bug explanations, the hidden tests, and the reference are shown only in the debrief. The formulas are
+version 1 (the new rubrics add dimensions; no existing formula changed).

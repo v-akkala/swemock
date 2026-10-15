@@ -6,6 +6,12 @@ import { getDsa, getDsaPrivate } from "./content/repo";
 import { getLld, getLldPrivate } from "./content/lld";
 import { revealPayload } from "./lld/service";
 import type { LldRevealPayload } from "@/lib/lld-types";
+import type { FluencyType } from "@/lib/fluency-types";
+import { getFluency, getFluencyPrivate } from "./content/fluency";
+import { assistantEvents } from "./fluency/assistant";
+import { foldFindings } from "./fluency/findings";
+import { finalFiles, mutationReports, reviewFindings, type MutationReport } from "./fluency/metrics";
+import { startingFiles } from "./fluency/service";
 import { getBehavioralPrivate, getBehavioralPublic, getCsPrivate, getCsPublic } from "./content/questions";
 import { resolveAi } from "./ai/config";
 import { sessionUsage, type SessionUsage } from "./ai/usage";
@@ -61,7 +67,24 @@ export interface LldDebrief {
   change: string;
 }
 
+export interface FluencyDebrief {
+  type: FluencyType;
+  planted: { id: string; file: string; lines: [number, number]; category: string; severity: string; title: string; explanation: string; status: "found" | "borderline" | "missed"; foundBy: string | null }[];
+  findings: { id: string; file: string; lines: [number, number]; category: string; severity: string; text: string; verdict: "match" | "borderline" | "acceptable" | "false-positive"; plantedId: string | null; confirmed: boolean }[];
+  decisions: { title: string; for: string; against: string }[];
+  improvements: string[];
+  acceptable: { file: string; lines: [number, number]; note: string }[];
+  summary: string;
+  decision: { given: string | null; correct: string | null; summary: string };
+  mutations: MutationReport[];
+  assistant: { question: string; via: string; applied: { accepted: number; rejected: number } }[];
+  /** Extension: what changed from the starting repo, and the reference. */
+  changedFiles: string[];
+  reference: Record<string, string> | null;
+}
+
 export interface DebriefData {
+  fluency: FluencyDebrief | null;
   /** Where "Practice this problem" goes. */
   problemHref: string | null;
   lld: LldDebrief | null;
@@ -120,7 +143,9 @@ export function loadDebrief(sessionId: string): DebriefData | null {
   if (session.mode === "interview") session = settleInterview(sessionId).session;
   const slug = session.itemId?.split(":")[1] ?? null;
   const lldItem = session.roundType === "lld" && slug ? getLld(slug) : null;
-  const problem = lldItem ? { pub: lldItem.pub } : slug && session.roundType !== "lld" ? getDsa(slug) : null;
+  const fluencyType = (["comprehension", "review", "extension"] as const).find((t) => t === session.roundType) ?? null;
+  const fluencyItem = fluencyType && slug ? getFluency(fluencyType, slug) : null;
+  const problem = lldItem ? { pub: lldItem.pub } : fluencyItem ? { pub: fluencyItem.pub } : slug && session.roundType !== "lld" && !fluencyType ? getDsa(slug) : null;
 
   let code: Frame["code"] = null;
   const frames: Frame[] = sessionEvents<Record<string, unknown>>(session.id)
@@ -135,20 +160,21 @@ export function loadDebrief(sessionId: string): DebriefData | null {
     });
 
   const ended = session.status !== "active";
-  const priv = slug && ended && session.roundType !== "lld" ? getDsaPrivate(slug) : null;
+  const priv = slug && ended && session.roundType !== "lld" && !fluencyType ? getDsaPrivate(slug) : null;
   const lldPriv = lldItem && ended ? getLldPrivate(slug!) : null;
   const conversation = ended && session.mode === "interview" ? conversationExtras(session) : { recruiter: null, behavioral: null };
   return {
-    problemHref: problem ? `/${session.roundType === "lld" ? "lld" : "dsa"}/${problem.pub.slug}` : null,
+    fluency: ended && fluencyType && fluencyItem ? fluencyDebrief(session, fluencyType, slug!) : null,
+    problemHref: problem ? (fluencyType ? `/ai-fluency/${fluencyType}/${problem.pub.slug}` : `/${session.roundType === "lld" ? "lld" : "dsa"}/${problem.pub.slug}`) : null,
     lld: lldPriv && slug ? { design: revealPayload(slug), followups: lldPriv.followups, change: lldPriv.changeMd } : null,
     roundType: session.roundType,
     title: session.roundType === "recruiter" ? "Recruiter screen" : session.roundType === "behavioral" ? "Behavioral interview" : (problem?.pub.title ?? ""),
     ...conversation,
     session: { id: session.id, mode: session.mode, driver: session.driver, status: session.status, startedAt: session.startedAt, endedAt: session.endedAt },
     liveVia: session.mode === "interview" ? readState(session).liveVia : null,
-    problem: problem ? { slug: problem.pub.slug, title: problem.pub.title, difficulty: problem.pub.difficulty } : null,
+    problem: problem ? { slug: problem.pub.slug, title: problem.pub.title, difficulty: problem.pub.difficulty as "easy" | "medium" | "hard" } : null,
     frames,
-    scorecard: session.mode === "interview" && ended ? loadScorecard(session.id) : null,
+    scorecard: (session.mode === "interview" || fluencyType) && ended ? loadScorecard(session.id) : null,
     reveal: priv ? { editorialMd: priv.editorialMd, references: priv.references, followups: priv.followups } : null,
     aiConnected: resolveAi().connected,
     usage: sessionUsage(session.id),
@@ -195,4 +221,60 @@ function conversationExtras(session: SessionRow): { recruiter: RecruiterDebrief 
     };
   }
   return { recruiter: null, behavioral: null };
+}
+
+function fluencyDebrief(session: SessionRow, type: FluencyType, slug: string): FluencyDebrief {
+  const priv = getFluencyPrivate(type, slug)!;
+  const folded = foldFindings(session.id);
+  const events = assistantEvents(session.id);
+  const base: FluencyDebrief = {
+    type,
+    planted: [],
+    findings: [],
+    decisions: [],
+    improvements: [],
+    acceptable: [],
+    summary: folded.summary,
+    decision: { given: folded.decision?.value ?? null, correct: null, summary: folded.decision?.summary ?? "" },
+    mutations: mutationReports(session),
+    assistant: events.prompts.map((p) => {
+      const applied = events.applies.filter((a) => String(a.payload.proposalId).startsWith(`${String(p.payload.promptId)}-`));
+      return {
+        question: String(p.payload.question),
+        via: String(p.payload.via),
+        applied: { accepted: applied.reduce((n, a) => n + (a.payload.accepted as string[]).length, 0), rejected: applied.reduce((n, a) => n + (a.payload.rejected as string[]).length, 0) },
+      };
+    }),
+    changedFiles: [],
+    reference: null,
+  };
+  if (type === "extension") {
+    const start = startingFiles(type, getFluency(type, slug)!.pub);
+    const final = finalFiles(session) ?? {};
+    base.changedFiles = Object.keys(final).filter((p) => final[p] !== start[p]);
+    base.reference = (priv as { reference: Record<string, string> }).reference;
+    return base;
+  }
+  const review = reviewFindings(session)!;
+  const issues = type === "comprehension" ? (priv as { manifest: { bugs: { id: string; file: string; lines: [number, number]; category: string; severity: string; title: string; explanation: string }[] } }).manifest.bugs : (priv as { issues: { id: string; file: string; lines: [number, number]; category: string; severity: string; title: string; explanation: string }[] }).issues;
+  base.planted = issues.map((i) => {
+    const hit = review.match.matches.find((m) => m.plantedId === i.id);
+    const border = review.match.borderline.find((b) => b.plantedId === i.id);
+    return { ...i, status: hit ? "found" : border ? "borderline" : "missed", foundBy: hit?.findingId ?? null };
+  });
+  base.findings = folded.findings.map((f) => {
+    const hit = review.match.matches.find((m) => m.findingId === f.id);
+    const verdict = hit ? "match" : review.match.borderline.some((b) => b.findingId === f.id) ? "borderline" : review.match.acceptable.includes(f.id) ? "acceptable" : "false-positive";
+    return { ...f, verdict, plantedId: hit?.plantedId ?? review.match.borderline.find((b) => b.findingId === f.id)?.plantedId ?? null, confirmed: hit?.confirmed ?? false };
+  });
+  if (type === "comprehension") {
+    const m = (priv as { manifest: { decisions: { title: string; for: string; against: string }[]; improvements: string[]; acceptable: { file: string; lines: [number, number]; note: string }[] } }).manifest;
+    base.decisions = m.decisions;
+    base.improvements = m.improvements;
+    base.acceptable = m.acceptable;
+  } else {
+    base.decision.correct = (priv as { decision: string }).decision;
+    base.acceptable = (priv as { acceptable: { file: string; lines: [number, number]; note: string }[] }).acceptable;
+  }
+  return base;
 }

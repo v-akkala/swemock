@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { aiGradeSchema, checkGradeAgainstRubric, exampleGrade } from "./ai-grade";
-import { autoBehavioralScores, autoDsaScores, autoLldScores, autoRecruiterScores, finalScores, recommend, selfScores, type DsaMetrics, type SourcedScore } from "./formulas";
+import { aiUseScore, autoBehavioralScores, autoComprehensionScores, autoDsaScores, autoExtensionScores, autoLldScores, autoRecruiterScores, autoReviewScores, decisionScore, finalScores, recommend, selfScores, type AiUse, type DsaMetrics, type SourcedScore } from "./formulas";
 import { extractJsonBlock } from "./json-block";
 import { BEHAVIORAL_RUBRIC, DSA_INTERVIEW_RUBRIC as R, RECRUITER_RUBRIC, LLD_RUBRIC, RUBRICS, rubricForRound } from "./rubrics";
 
@@ -168,5 +168,82 @@ describe("autoLldScores", () => {
     expect(autoLldScores({ ...m, bestCoreEdge: { passed: 1, total: 10 } })[0]!.score).toBe(1);
     expect(autoLldScores({ ...m, hintsUsed: 3 })[0]!.score).toBe(3);
     expect(autoLldScores({ ...m, bestCoreEdge: null })[0]!.score).toBe(1);
+  });
+});
+
+
+const ai: AiUse = { queries: 3, applies: 2, hunksAccepted: 3, hunksRejected: 0, appliesVerified: 2, ownTests: false, mutationsInjected: 0, mutationsCaught: 0 };
+
+describe("aiUseScore", () => {
+  it("is null when the assistant wasn't used", () => {
+    expect(aiUseScore({ ...ai, queries: 0 })).toBeNull();
+  });
+
+  it("rewards verifying and pushing back, and punishes blind use and missed mistakes", () => {
+    expect(aiUseScore(ai)!.score).toBe(3);
+    expect(aiUseScore({ ...ai, hunksRejected: 1 })!.score).toBe(4);
+    expect(aiUseScore({ ...ai, appliesVerified: 0 })!.score).toBe(2);
+    expect(aiUseScore({ ...ai, applies: 3, appliesVerified: 0 })!.score).toBe(1);
+    expect(aiUseScore({ ...ai, mutationsInjected: 1, mutationsCaught: 0 })!.score).toBe(2);
+    expect(aiUseScore({ ...ai, mutationsInjected: 1, mutationsCaught: 1 })!.score).toBe(4);
+  });
+});
+
+const finding = { findings: 5, planted: 6, recall: 0.9, precision: 0.9, severityCalibration: 0.85, matched: 5 };
+
+describe("autoComprehensionScores", () => {
+  const byDim = (m: Parameters<typeof autoComprehensionScores>[0]) => Object.fromEntries(autoComprehensionScores(m).map((x) => [x.dimension, x.score]));
+
+  it("bands recall, precision and severity calibration", () => {
+    expect(byDim({ ...finding, ai })).toEqual({ bug_recall: 4, precision: 4, severity: 4, ai_use: 3 });
+    expect(byDim({ ...finding, recall: 0.6, precision: 0.65, severityCalibration: 0.6, ai })).toMatchObject({ bug_recall: 3, precision: 3, severity: 3 });
+    expect(byDim({ ...finding, recall: 0.3, precision: 0.4, severityCalibration: 0.4, ai })).toMatchObject({ bug_recall: 2, precision: 2, severity: 2 });
+    expect(byDim({ ...finding, recall: 0.1, precision: 0.1, severityCalibration: 0.1, ai })).toMatchObject({ bug_recall: 1, precision: 1, severity: 1 });
+  });
+
+  it("scores nothing it can't measure", () => {
+    const none = byDim({ ...finding, findings: 0, matched: 0, ai: { ...ai, queries: 0 } });
+    expect(none).toEqual({ bug_recall: 4, precision: 1 });
+  });
+});
+
+describe("decisionScore and autoReviewScores", () => {
+  it("compares the call with the right one", () => {
+    expect(decisionScore("reject", "reject")).toBe(4);
+    expect(decisionScore("reject", "request_changes")).toBe(3);
+    expect(decisionScore("request_changes", "approve")).toBe(2);
+    expect(decisionScore("reject", "approve")).toBe(1);
+    expect(decisionScore("approve", "request_changes")).toBe(2);
+  });
+
+  const m = { ...finding, correct: "request_changes" as const, given: "request_changes" as const, fix: null };
+  it("scores the decision, the fix, and ignores recall on a correct PR", () => {
+    const dims = (x: Parameters<typeof autoReviewScores>[0]) => Object.fromEntries(autoReviewScores(x).map((s) => [s.dimension, s.score]));
+    expect(dims(m)).toEqual({ recall: 4, precision: 4, decision: 4 });
+    expect(dims({ ...m, given: null }).decision).toBe(1);
+    expect(dims({ ...m, fix: { passed: 3, total: 4 } }).fix).toBe(3);
+    expect(dims({ ...m, fix: { passed: 1, total: 4 } }).fix).toBe(1);
+    const clean = dims({ ...m, correct: "approve", given: "approve", planted: 0, matched: 0, findings: 2, precision: 0.3 });
+    expect(clean).toEqual({ precision: 1, decision: 4 });
+  });
+});
+
+describe("autoExtensionScores", () => {
+  const m = { acceptance: { passed: 5, total: 5 }, regression: { passed: 10, total: 10 }, solved: true, submissions: 2, minutesToSolve: 20, minutesTotal: 45, ai, runs: 3 };
+  const dims = (x: Parameters<typeof autoExtensionScores>[0]) => Object.fromEntries(autoExtensionScores(x).map((s) => [s.dimension, s.score]));
+
+  it("bands acceptance, regression and time", () => {
+    expect(dims(m)).toEqual({ acceptance: 4, regression: 4, verification: 3, time: 4 });
+    expect(dims({ ...m, acceptance: { passed: 4, total: 5 }, regression: { passed: 9, total: 10 }, minutesToSolve: 35 })).toMatchObject({ acceptance: 3, regression: 3, time: 3 });
+    expect(dims({ ...m, acceptance: { passed: 2, total: 5 }, regression: { passed: 7, total: 10 }, minutesToSolve: 44 })).toMatchObject({ acceptance: 2, regression: 2, time: 2 });
+    expect(dims({ ...m, acceptance: null, regression: null, minutesToSolve: null, solved: false })).toMatchObject({ acceptance: 1, regression: 1, time: 1 });
+  });
+
+  it("judges verification from tests run after applying assistant code", () => {
+    const noAi = { ...ai, queries: 0, applies: 0, appliesVerified: 0, hunksAccepted: 0 };
+    expect(dims({ ...m, ai: noAi, runs: 0 }).verification).toBe(1);
+    expect(dims({ ...m, ai: { ...noAi, ownTests: true }, runs: 2 }).verification).toBe(3);
+    expect(dims({ ...m, ai: { ...ai, appliesVerified: 0 }, runs: 0 }).verification).toBe(1);
+    expect(dims({ ...m, ai: { ...ai, mutationsInjected: 1, mutationsCaught: 0 } }).verification).toBe(2);
   });
 });

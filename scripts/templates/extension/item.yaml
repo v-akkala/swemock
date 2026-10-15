@@ -1,0 +1,16 @@
+# SCAFFOLD: delete this line once the item is finished (content:validate fails while it is here).
+#
+# A tiny repo with a ticket, conventions, tests, hidden acceptance tests, and a reference implementation.
+# Full guide: prompts/authoring/extension.md
+title: __TITLE__
+difficulty: __DIFFICULTY__
+tags: [refactoring]
+source: authored
+reviewed: false
+version: 1
+language: python
+minutes: 45
+
+questions:
+  - How did you decide where the new code belongs?
+  - Which existing conventions did you follow, and which did you have to extend?

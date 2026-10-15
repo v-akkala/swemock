@@ -8,7 +8,11 @@ import { getSession, loadDrafts, sessionEvents } from "@/server/dsa/store";
 import { settleInterview } from "@/server/interview/engine";
 import { getLld, getLldPrivate } from "@/server/content/lld";
 import { loadLldDrafts } from "@/server/lld/store";
-import { InterviewShell, LldInterviewShell } from "./interview-shell";
+import { getFluency } from "@/server/content/fluency";
+import { foldFindings } from "@/server/fluency/findings";
+import { startingFiles } from "@/server/fluency/service";
+import { resolveAi } from "@/server/ai/config";
+import { FluencyInterviewShell, InterviewShell, LldInterviewShell } from "./interview-shell";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Interview · swemock" };
@@ -31,6 +35,32 @@ export default async function InterviewPage({ params }: { params: Promise<{ id: 
         voiceEnabled={readSettings(getDb()).features.voiceInput}
         resume={round?.kind === "recruiter" ? { title: round.config.resumeTitle, text: round.config.resumeText, role: round.config.role, company: round.config.company, jobDescription: round.config.jobDescription } : undefined}
         questionCount={round?.kind === "behavioral" ? round.config.questionIds.length : undefined}
+      />
+    );
+  }
+
+  if (session.roundType === "comprehension" || session.roundType === "review" || session.roundType === "extension") {
+    const type = session.roundType;
+    const slug = session.itemId!.split(":")[1]!;
+    const { pub } = getFluency(type, slug)!;
+    const folded = foldFindings(id);
+    return (
+      <FluencyInterviewShell
+        sessionId={id}
+        liveVia={state.liveVia}
+        workspace={{
+          type,
+          slug,
+          pub,
+          startFiles: startingFiles(type, pub),
+          drafts: loadLldDrafts(session.itemId!, id)[pub.language] ?? null,
+          sessionId: id,
+          mode: "interview",
+          aiConnected: resolveAi().connected,
+          initialFindings: folded.findings,
+          initialSummary: folded.summary,
+          initialDecision: folded.decision,
+        }}
       />
     );
   }

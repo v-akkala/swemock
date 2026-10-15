@@ -39,7 +39,11 @@ export default function HistoryPage() {
             ? `/interview/${s.id}`
             : s.mode === "oa"
               ? `/dsa/oa/${s.id}`
-              : `/dsa/${s.itemId?.split(":")[1]}`
+              : s.roundType === "lld"
+                ? `/lld/${s.itemId?.split(":")[1]}`
+                : ["comprehension", "review", "extension"].includes(s.roundType)
+                  ? `/ai-fluency/${s.roundType}/${s.itemId?.split(":")[1]}`
+                  : `/dsa/${s.itemId?.split(":")[1]}`
           : s.mode === "oa"
             ? `/dsa/oa/${s.id}`
             : `/debrief/${s.id}`;

@@ -60,3 +60,36 @@ export function lldPhases(minutes: number): Phase[] {
     { id: "wrapup", label: "Follow-ups and questions", minutes: minutes - at(0.9) },
   ];
 }
+
+/** AI Fluency rounds (spec §8.4.x): comprehension 5/30/15/10, review 3/27/10, extension 3/7/35/10/5, scaled to the item's length. */
+const FLUENCY_PHASES: Record<"comprehension" | "review" | "extension", { id: string; label: string; weight: number }[]> = {
+  comprehension: [
+    { id: "orientation", label: "Orientation", weight: 5 },
+    { id: "hunt", label: "Bug hunt", weight: 30 },
+    { id: "design", label: "Design discussion", weight: 15 },
+    { id: "wrapup", label: "Improvements and wrap-up", weight: 10 },
+  ],
+  review: [
+    { id: "intro", label: "Introductions", weight: 3 },
+    { id: "review", label: "Review", weight: 27 },
+    { id: "decision", label: "Decision and wrap-up", weight: 10 },
+  ],
+  extension: [
+    { id: "intro", label: "Introductions", weight: 3 },
+    { id: "plan", label: "Plan", weight: 7 },
+    { id: "implement", label: "Implementation", weight: 35 },
+    { id: "verify", label: "Verification", weight: 10 },
+    { id: "wrapup", label: "Wrap-up", weight: 5 },
+  ],
+};
+
+export function fluencyPhases(type: "comprehension" | "review" | "extension", minutes: number): Phase[] {
+  const spec = FLUENCY_PHASES[type];
+  const total = spec.reduce((n, p) => n + p.weight, 0);
+  let left = minutes;
+  return spec.map((p, i) => {
+    const m = i === spec.length - 1 ? left : Math.max(1, Math.round((minutes * p.weight) / total));
+    left -= m;
+    return { id: p.id, label: p.label, minutes: m };
+  });
+}

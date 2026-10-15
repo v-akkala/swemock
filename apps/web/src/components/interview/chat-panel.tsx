@@ -12,7 +12,7 @@ export function ChatPanel({
 }: {
   iv: InterviewApi;
   sessionId: string;
-  packetKind: "dsa-interview-live" | "lld-interview-live";
+  packetKind: "dsa-interview-live" | "lld-interview-live" | "fluency-live";
   packetDescription: string;
 }) {
   return (

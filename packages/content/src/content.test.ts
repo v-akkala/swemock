@@ -41,6 +41,22 @@ describe("real content", () => {
         }
         continue;
       }
+      if (item.type === "comprehension" || item.type === "review" || item.type === "extension") {
+        const pub = toStored(item).publicJson;
+        const secrets: string[] = [];
+        if (item.type !== "extension") for (const i of item.type === "review" ? item.manifest.issues : item.manifest.bugs) secrets.push(i.explanation, i.title);
+        if (item.type === "comprehension") for (const d of item.manifest.decisions) secrets.push(d.for, d.against);
+        for (const t of Object.values(item.type === "comprehension" ? item.bugTests : item.hiddenTests)) for (const m of t.matchAll(/def (test_\w+)/g)) secrets.push(m[1]!);
+        if (item.type === "extension") {
+          // Reference code is private, except where it is the same as the repo's own file.
+          for (const t of Object.values(item.reference)) {
+            const slice = t.slice(Math.floor(t.length / 2), Math.floor(t.length / 2) + 80);
+            if (!Object.values(item.repo).some((r) => r.includes(slice))) secrets.push(slice);
+          }
+        }
+        for (const secret of secrets) expect(pub, `${item.type}/${item.slug}`).not.toContain(JSON.stringify(secret).slice(1, -1));
+        continue;
+      }
       if (item.type === "behavioral") {
         const pub = toStored(item).publicJson;
         for (const f of item.manifest.follow_ups) expect(pub, item.slug).not.toContain(JSON.stringify(f).slice(1, -1));

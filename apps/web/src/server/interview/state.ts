@@ -58,6 +58,13 @@ export interface LldRound {
   slug: string;
 }
 
+/** AI Fluency rounds: which exercise (the type is also the session's round type). */
+export interface FluencyRound {
+  kind: "fluency";
+  type: "comprehension" | "review" | "extension";
+  slug: string;
+}
+
 export interface InterviewState {
   phases: Phase[];
   phaseIndex: number;
@@ -70,7 +77,7 @@ export interface InterviewState {
   /** The candidate's code when the AI interviewer last spoke, for diffs. */
   llmCodeBaseline: string | null;
   /** Round-specific state; absent for coding rounds. */
-  round?: RecruiterRound | BehavioralRound | LldRound;
+  round?: RecruiterRound | BehavioralRound | LldRound | FluencyRound;
 }
 
 export function readState(session: SessionRow): InterviewState {

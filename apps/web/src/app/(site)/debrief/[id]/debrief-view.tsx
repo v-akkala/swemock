@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import type { DebriefData } from "@/server/debrief";
 import type { ScorecardView } from "@/server/scoring/scorecard";
 import { BehavioralExtras, RecruiterExtras } from "./conversation-debrief";
+import { FluencyExtras } from "./fluency-debrief";
 import { DesignView } from "@/components/lld/design-view";
 import { LANGUAGE_LABELS } from "@swemock/shared";
 
@@ -47,7 +48,7 @@ export function DebriefView({ data }: { data: DebriefData }) {
     <div className="space-y-10">
       {card && <Scorecard card={card} />}
 
-      {card && interview && (
+      {card && (
         <section aria-labelledby="grade-heading" className="grid gap-6 lg:grid-cols-2">
           <SelfChecklist sessionId={data.session.id} card={card} onSaved={setCard} />
           <div className="space-y-3">
@@ -63,7 +64,7 @@ export function DebriefView({ data }: { data: DebriefData }) {
               </>
             ) : (
               <PacketPanel
-                kind={`${data.roundType}-grading` as "dsa-grading" | "recruiter-grading" | "behavioral-grading"}
+                kind={(["comprehension", "review", "extension"].includes(data.roundType) ? "fluency-grading" : `${data.roundType}-grading`) as "dsa-grading" | "recruiter-grading" | "behavioral-grading"}
                 sessionId={data.session.id}
                 title="Grade with any chatbot"
                 description="Copy this grading packet (rubric, transcript, and events) into claude.ai or another assistant, then paste its whole reply here."
@@ -78,6 +79,7 @@ export function DebriefView({ data }: { data: DebriefData }) {
         </section>
       )}
 
+      {data.fluency && <FluencyExtras sessionId={data.session.id} data={data.fluency} onCard={setCard} />}
       {data.recruiter && <RecruiterExtras sessionId={data.session.id} data={data.recruiter} aiConnected={data.aiConnected} />}
       {data.behavioral && <BehavioralExtras sessionId={data.session.id} data={data.behavioral} aiConnected={data.aiConnected} />}
 

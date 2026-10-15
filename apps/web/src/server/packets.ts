@@ -26,6 +26,7 @@ import {
   storedFeedback,
   type FeedbackKind,
 } from "./packets-conversation";
+import { fluencyGrading, fluencyLive } from "./packets-fluency";
 import { lldGrading, lldLive } from "./packets-lld";
 import { dsaMetrics, saveAiGrade, type ScorecardView } from "./scoring/scorecard";
 
@@ -171,19 +172,21 @@ function approachPacket(type: ItemType, slug: string, approach: string, sessionI
 
 /** The grading packet and rubric for whatever kind of round this session is. */
 function gradingFor(session: SessionRow): { packet: Packet; rubric: Rubric } {
-  if (session.mode !== "interview") throw new ApiError(400, "Grading packets are for interviews.");
+  if (session.mode !== "interview" && !FLUENCY_ROUNDS.has(session.roundType)) throw new ApiError(400, "Grading packets are for interviews.");
   if (session.roundType === "recruiter") return recruiterGrading(session);
   if (session.roundType === "behavioral") return behavioralGrading(session);
   if (session.roundType === "lld") return lldGrading(session);
+  if (FLUENCY_ROUNDS.has(session.roundType)) return fluencyGrading(session);
   return { packet: dsaGradingPacket(session), rubric: DSA_INTERVIEW_RUBRIC };
 }
 
-const GRADING_KINDS: Partial<Record<PacketKind, string>> = { "dsa-grading": "dsa", "recruiter-grading": "recruiter", "behavioral-grading": "behavioral", "lld-grading": "lld" };
-const LIVE_KINDS: Partial<Record<PacketKind, string>> = { "dsa-interview-live": "dsa", "recruiter-live": "recruiter", "behavioral-live": "behavioral", "lld-interview-live": "lld" };
+const FLUENCY_ROUNDS = new Set(["comprehension", "review", "extension"]);
+const GRADING_KINDS: Partial<Record<PacketKind, string>> = { "dsa-grading": "dsa", "recruiter-grading": "recruiter", "behavioral-grading": "behavioral", "lld-grading": "lld", "fluency-grading": "fluency" };
+const LIVE_KINDS: Partial<Record<PacketKind, string>> = { "dsa-interview-live": "dsa", "recruiter-live": "recruiter", "behavioral-live": "behavioral", "lld-interview-live": "lld", "fluency-live": "fluency" };
 
 function requireRound(session: SessionRow, kind: PacketKind): void {
   const want = GRADING_KINDS[kind] ?? LIVE_KINDS[kind] ?? (kind === "resume-feedback" ? "recruiter" : kind === "behavioral-rewrite" ? "behavioral" : null);
-  if (want && session.roundType !== want) throw new ApiError(400, "That packet doesn't belong to this kind of interview.");
+  if (want === "fluency" ? !FLUENCY_ROUNDS.has(session.roundType) : want && session.roundType !== want) throw new ApiError(400, "That packet doesn't belong to this kind of interview.");
 }
 
 export function renderPacket(req: { kind: PacketKind; sessionId?: string; slug?: string; approach?: string; itemType?: ItemType }): Packet {
@@ -203,6 +206,8 @@ export function renderPacket(req: { kind: PacketKind; sessionId?: string; slug?:
       return behavioralLive(session);
     case "lld-interview-live":
       return lldLive(session);
+    case "fluency-live":
+      return fluencyLive(session);
     case "resume-feedback":
       return resumeFeedbackPacket(session);
     case "behavioral-rewrite":
@@ -280,6 +285,9 @@ export function pasteReply(sessionId: string, kind: PacketKind, text: string): P
 const GRADER_SYSTEM: Record<string, string> = {
   dsa: "You grade mock coding interviews for a hiring committee. Follow the instructions in the user's message exactly.",
   recruiter: "You grade mock recruiter screens for a hiring committee. Follow the instructions in the user's message exactly.",
+  comprehension: "You grade mock code comprehension interviews for a hiring committee. Follow the instructions in the user's message exactly.",
+  review: "You grade mock code review interviews for a hiring committee. Follow the instructions in the user's message exactly.",
+  extension: "You grade mock feature extension interviews for a hiring committee. Follow the instructions in the user's message exactly.",
   lld: "You grade mock low-level design interviews for a hiring committee. Follow the instructions in the user's message exactly.",
   behavioral: "You grade mock behavioral interviews for a hiring committee. Follow the instructions in the user's message exactly.",
 };

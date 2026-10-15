@@ -490,8 +490,338 @@ export const LLD_RUBRIC: Rubric = {
   ],
 };
 
+export const COMPREHENSION_RUBRIC: Rubric = {
+  id: "comprehension-interview",
+  version: "1",
+  dimensions: [
+    {
+      id: "summary",
+      label: "Summary of the system",
+      description: "Explains what the system does, its main pieces, and how they interact.",
+      anchors: [
+        "No summary, or it misdescribes the system.",
+        "Lists files or functions without the big picture.",
+        "Accurate: purpose, main pieces, and data flow.",
+        "Accurate and insightful: purpose, flow, invariants, and where it is fragile.",
+      ],
+      items: [
+        { id: "su-purpose", kind: "must", text: "Stated the system's purpose in a sentence" },
+        { id: "su-flow", kind: "must", text: "Described how the main pieces interact" },
+        { id: "su-fragile", kind: "strong", text: "Pointed out where the design is fragile" },
+        { id: "su-wrong", kind: "red", text: "Described something the code doesn't do" },
+      ],
+    },
+    {
+      id: "bug_recall",
+      label: "Bug recall (auto)",
+      description: "How many of the planted bugs were found, weighted by severity.",
+      anchors: [
+        "Found few or none.",
+        "Found some of the easier bugs.",
+        "Found most, including some subtle ones.",
+        "Found nearly all, subtle ones included.",
+      ],
+      items: [
+        { id: "br-read", kind: "must", text: "Read every file before concluding" },
+        { id: "br-test", kind: "strong", text: "Proved at least one suspicion by running a test" },
+      ],
+    },
+    {
+      id: "precision",
+      label: "Precision (auto)",
+      description: "Findings are real problems, not noise.",
+      anchors: [
+        "Mostly false alarms.",
+        "Several unfounded findings.",
+        "Almost all findings are real.",
+        "Every finding is real, with the right category.",
+      ],
+      items: [
+        { id: "pr-check", kind: "must", text: "Checked a suspicion before reporting it" },
+        { id: "pr-noise", kind: "red", text: "Reported style preferences as bugs" },
+      ],
+    },
+    {
+      id: "severity",
+      label: "Severity calibration (auto)",
+      description: "Rates how serious each finding is the way a maintainer would.",
+      anchors: [
+        "Severity is unrelated to impact.",
+        "Often too high or too low.",
+        "Mostly in line.",
+        "Consistently well calibrated.",
+      ],
+      items: [
+        { id: "sv-impact", kind: "must", text: "Rated severity by impact and likelihood" },
+      ],
+    },
+    {
+      id: "design",
+      label: "Design reasoning",
+      description: "Discusses the debatable design decisions with arguments on both sides.",
+      anchors: [
+        "No design discussion.",
+        "Opinions without reasons.",
+        "Weighs tradeoffs on the main decisions.",
+        "Weighs tradeoffs, links them to scale and change, and proposes concrete improvements.",
+      ],
+      items: [
+        { id: "de-both", kind: "must", text: "Gave arguments for and against at least one decision" },
+        { id: "de-scale", kind: "strong", text: "Said what breaks at 100x scale" },
+        { id: "de-improve", kind: "strong", text: "Proposed a concrete improvement" },
+      ],
+    },
+    {
+      id: "ai_use",
+      label: "Quality of AI use (auto)",
+      description: "Uses the assistant as a tool and verifies what it says.",
+      anchors: [
+        "Pasted assistant output without checking it.",
+        "Used the assistant but rarely verified.",
+        "Verified most claims by running code or reading.",
+        "Used the assistant for leverage and independently verified its claims.",
+      ],
+      items: [
+        { id: "ai-verify", kind: "must", text: "Checked the assistant's claims by running code or reading the code" },
+        { id: "ai-reject", kind: "strong", text: "Rejected or corrected something the assistant proposed" },
+        { id: "ai-blind", kind: "red", text: "Applied assistant code without reading it" },
+      ],
+    },
+    {
+      id: "communication",
+      label: "Communication",
+      description: "Explains what they see, what they're doing, and why; responds to the interviewer.",
+      anchors: [
+        "Silent or hard to follow.",
+        "Explains when asked, with long silent stretches.",
+        "Narrates key decisions and answers questions clearly.",
+        "Clear and collaborative throughout; states assumptions and next steps.",
+      ],
+      items: [
+        { id: "cm-narrate", kind: "must", text: "Narrated what I was looking at and why" },
+        { id: "cm-questions", kind: "must", text: "Answered the interviewer's questions directly" },
+        { id: "cm-silent", kind: "red", text: "Went silent for long stretches or ignored the interviewer" },
+      ],
+    },
+  ],
+};
+
+export const REVIEW_RUBRIC: Rubric = {
+  id: "review-interview",
+  version: "1",
+  dimensions: [
+    {
+      id: "decision",
+      label: "Final decision (auto)",
+      description: "Approves, requests changes, or rejects as the change deserves.",
+      anchors: [
+        "The opposite of the right call.",
+        "Close, but too harsh or too lenient.",
+        "The right call with a thin justification.",
+        "The right call with a clear, proportionate summary.",
+      ],
+      items: [
+        { id: "dc-summary", kind: "must", text: "Summarized the reason for the decision" },
+      ],
+    },
+    {
+      id: "recall",
+      label: "Issues found (auto)",
+      description: "How many of the seeded issues were found, weighted by severity.",
+      anchors: [
+        "Found few or none.",
+        "Found the obvious ones.",
+        "Found most, including security or edge cases.",
+        "Found nearly all.",
+      ],
+      items: [
+        { id: "rc-read", kind: "must", text: "Read the diff and the surrounding code, not just the description" },
+        { id: "rc-run", kind: "strong", text: "Ran the tests or wrote one to confirm a suspicion" },
+      ],
+    },
+    {
+      id: "precision",
+      label: "Precision (auto)",
+      description: "Comments point at real problems; a correct change isn't over-flagged.",
+      anchors: [
+        "Mostly false alarms.",
+        "Several unfounded comments.",
+        "Almost all comments are real.",
+        "Every comment is real and in the right place.",
+      ],
+      items: [
+        { id: "pc-nits", kind: "must", text: "Kept nits separate from blocking issues" },
+        { id: "pc-over", kind: "red", text: "Blocked a correct change over preferences" },
+      ],
+    },
+    {
+      id: "comments",
+      label: "Comment quality",
+      description: "Comments are specific, actionable, and professional.",
+      anchors: [
+        "Vague or rude.",
+        "Points at the problem without a way forward.",
+        "Specific and polite.",
+        "Specific, actionable, with a suggested fix and the reason it matters.",
+      ],
+      items: [
+        { id: "cq-specific", kind: "must", text: "Said what is wrong, where, and why" },
+        { id: "cq-fix", kind: "strong", text: "Suggested a fix" },
+        { id: "cq-tone", kind: "must", text: "Kept the tone professional" },
+      ],
+    },
+    {
+      id: "fix",
+      label: "Fix (auto)",
+      description: "If a fix was attempted, how many of the hidden tests it passes.",
+      anchors: [
+        "The fix broke things.",
+        "Fixed part of the problem.",
+        "Fixed the problem.",
+        "Fixed the problem cleanly and added a test.",
+      ],
+      items: [
+        { id: "fx-test", kind: "strong", text: "Added or ran a test for the fix" },
+        { id: "fx-small", kind: "must", text: "Kept the fix small and focused" },
+      ],
+    },
+    {
+      id: "communication",
+      label: "Communication",
+      description: "Explains what they see, what they're doing, and why; responds to the interviewer.",
+      anchors: [
+        "Silent or hard to follow.",
+        "Explains when asked, with long silent stretches.",
+        "Narrates key decisions and answers questions clearly.",
+        "Clear and collaborative throughout; states assumptions and next steps.",
+      ],
+      items: [
+        { id: "cm-narrate", kind: "must", text: "Narrated what I was looking at and why" },
+        { id: "cm-questions", kind: "must", text: "Answered the interviewer's questions directly" },
+        { id: "cm-silent", kind: "red", text: "Went silent for long stretches or ignored the interviewer" },
+      ],
+    },
+  ],
+};
+
+export const EXTENSION_RUBRIC: Rubric = {
+  id: "extension-interview",
+  version: "1",
+  dimensions: [
+    {
+      id: "acceptance",
+      label: "Acceptance tests (auto)",
+      description: "The hidden acceptance tests for the ticket pass.",
+      anchors: [
+        "Few or none pass.",
+        "Some pass; core behavior is missing.",
+        "Most pass.",
+        "All pass.",
+      ],
+      items: [
+        { id: "ac-read", kind: "must", text: "Read the ticket's acceptance criteria before coding" },
+      ],
+    },
+    {
+      id: "regression",
+      label: "No regressions (auto)",
+      description: "The existing behavior still works.",
+      anchors: [
+        "Broke several existing tests.",
+        "Broke a few existing tests.",
+        "Nothing broken except edge cases.",
+        "No regressions.",
+      ],
+      items: [
+        { id: "rg-run", kind: "must", text: "Ran the existing tests before and after the change" },
+      ],
+    },
+    {
+      id: "verification",
+      label: "Verification (auto)",
+      description: "Checks assistant-written code: runs tests after applying it, reviews diffs, adds tests.",
+      anchors: [
+        "Applied code without running anything.",
+        "Ran tests occasionally.",
+        "Ran tests after most changes and reviewed diffs.",
+        "Reviewed diffs, ran tests after each change, added tests, and caught problems.",
+      ],
+      items: [
+        { id: "vf-run", kind: "must", text: "Ran the tests after applying assistant code" },
+        { id: "vf-diff", kind: "must", text: "Reviewed the diff before accepting it" },
+        { id: "vf-test", kind: "strong", text: "Added a test for the new behavior" },
+      ],
+    },
+    {
+      id: "time",
+      label: "Time management (auto)",
+      description: "Gets to a working solution with time left to verify.",
+      anchors: [
+        "Never got to a working solution.",
+        "Finished at the last minute.",
+        "Finished with some time to verify.",
+        "Finished early and used the rest to verify and clean up.",
+      ],
+      items: [
+        { id: "tm-plan", kind: "must", text: "Made a plan before starting" },
+      ],
+    },
+    {
+      id: "fit",
+      label: "Structural fit",
+      description: "Follows the repository's patterns and CONVENTIONS.md, with no duplication and sensible placement.",
+      anchors: [
+        "Ignores the conventions and duplicates code.",
+        "Works but puts code in the wrong place or breaks a convention.",
+        "Follows the layering and naming conventions.",
+        "Indistinguishable from the existing code, and reuses what is there.",
+      ],
+      items: [
+        { id: "ft-layer", kind: "must", text: "Put each change in the layer where the conventions say it belongs" },
+        { id: "ft-naming", kind: "must", text: "Followed the naming and error-handling conventions" },
+        { id: "ft-dup", kind: "red", text: "Duplicated existing logic" },
+      ],
+    },
+    {
+      id: "prompting",
+      label: "Prompting quality",
+      description: "Gives the assistant clear specs, relevant context, and iterates.",
+      anchors: [
+        "Vague one-line requests.",
+        "Some context, little iteration.",
+        "Clear requests with the relevant files attached.",
+        "Decomposed the task, attached the right context, and iterated on the results.",
+      ],
+      items: [
+        { id: "pm-context", kind: "must", text: "Attached the relevant files or selections" },
+        { id: "pm-decompose", kind: "strong", text: "Broke the task into steps" },
+        { id: "pm-iterate", kind: "strong", text: "Followed up when the first answer was wrong" },
+      ],
+    },
+    {
+      id: "communication",
+      label: "Communication",
+      description: "Explains what they see, what they're doing, and why; responds to the interviewer.",
+      anchors: [
+        "Silent or hard to follow.",
+        "Explains when asked, with long silent stretches.",
+        "Narrates key decisions and answers questions clearly.",
+        "Clear and collaborative throughout; states assumptions and next steps.",
+      ],
+      items: [
+        { id: "cm-narrate", kind: "must", text: "Narrated what I was looking at and why" },
+        { id: "cm-questions", kind: "must", text: "Answered the interviewer's questions directly" },
+        { id: "cm-silent", kind: "red", text: "Went silent for long stretches or ignored the interviewer" },
+      ],
+    },
+  ],
+};
+
 export const RUBRICS: Record<string, Rubric> = {
   [LLD_RUBRIC.id]: LLD_RUBRIC,
+  [COMPREHENSION_RUBRIC.id]: COMPREHENSION_RUBRIC,
+  [REVIEW_RUBRIC.id]: REVIEW_RUBRIC,
+  [EXTENSION_RUBRIC.id]: EXTENSION_RUBRIC,
   [DSA_INTERVIEW_RUBRIC.id]: DSA_INTERVIEW_RUBRIC,
   [RECRUITER_RUBRIC.id]: RECRUITER_RUBRIC,
   [BEHAVIORAL_RUBRIC.id]: BEHAVIORAL_RUBRIC,
@@ -506,6 +836,12 @@ export function rubricForRound(roundType: string): Rubric {
       return BEHAVIORAL_RUBRIC;
     case "lld":
       return LLD_RUBRIC;
+    case "comprehension":
+      return COMPREHENSION_RUBRIC;
+    case "review":
+      return REVIEW_RUBRIC;
+    case "extension":
+      return EXTENSION_RUBRIC;
     default:
       return DSA_INTERVIEW_RUBRIC;
   }

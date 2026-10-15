@@ -15,7 +15,9 @@ export type PacketKind =
   | "behavioral-grading"
   | "behavioral-rewrite"
   | "lld-interview-live"
-  | "lld-grading";
+  | "lld-grading"
+  | "fluency-live"
+  | "fluency-grading";
 type Kind = PacketKind;
 
 interface Packet {

@@ -3,7 +3,10 @@ import { getLld, getLldPrivate } from "../../content/lld";
 import { latestLldFiles } from "../../lld/store";
 import { sessionEvents } from "../../dsa/store";
 import { lineDiff } from "../diff";
+import { describeHidden, describeVisible, ROUND_NAME, ROUND_RULES } from "../../fluency/describe";
+import { parseItemId } from "../../content/fluency";
 import { getBehavioralPrivate, getBehavioralPublic, getCsPrivate, getCsPublic } from "../../content/questions";
+import { getFluencyPrivate } from "../../content/fluency";
 import type { SessionRow } from "../../dsa/store";
 import { loadTemplate, render } from "../../prompts/templates";
 import { phasePlanText, totalMinutes } from "../phases";
@@ -189,5 +192,43 @@ export const lldLlm: LlmRound = {
     const priv = getLldPrivate(slugOf(session))!;
     const code = Object.values(priv.languages).flatMap((l) => Object.values(l!.reference));
     return { code, prose: [priv.designMd, ...priv.hints.slice(2)] };
+  },
+};
+
+// ---- AI Fluency -----------------------------------------------------------------------------------------
+
+export const fluencyLlm: LlmRound = {
+  blockCodeBlocks: false,
+  system(session, state) {
+    const { type, slug } = parseItemId(session.itemId!);
+    const t = loadTemplate("interviewer/fluency-system.md");
+    const text = render(t.body, {
+      minutes: String(totalMinutes(state.phases)),
+      round_name: ROUND_NAME[type],
+      persona_suffix: "",
+      round_rules: ROUND_RULES[type],
+      visible: describeVisible(type, slug),
+      hidden: describeHidden(type, slug),
+      phase_plan: phasePlanText(state.phases),
+    });
+    return { text, versionTag: t.versionTag };
+  },
+  context(session, state, now) {
+    const lines = timeLines(session, state, now);
+    const events = sessionEvents<Record<string, unknown>>(session.id);
+    const runs = events.filter((e) => e.kind === "run" || e.kind === "submit");
+    const last = runs.at(-1);
+    if (last) lines.push(`Latest run: ${last.kind === "run" ? "ran a command" : "submitted"}: ${String(last.payload.verdict).replace(/_/g, " ")}, ${last.payload.passed}/${last.payload.total} passed.`);
+    const findings = events.filter((e) => e.kind === "annotation" && (e.payload as { type?: string; op?: string }).type === "finding" && (e.payload as { op?: string }).op !== "remove").length;
+    lines.push(`Findings marked so far: ${findings}. Assistant questions asked: ${events.filter((e) => e.kind === "assistant_prompt").length}.`);
+    lines.push("</context>");
+    return { text: lines.join("\n"), code: null };
+  },
+  leak(session) {
+    const { type, slug } = parseItemId(session.itemId!);
+    const priv = getFluencyPrivate(type, slug)!;
+    if (type === "extension") return { code: Object.values((priv as { reference: Record<string, string> }).reference), prose: [] };
+    const issues = type === "comprehension" ? (priv as { manifest: { bugs: { explanation: string }[] } }).manifest.bugs : (priv as { issues: { explanation: string }[] }).issues;
+    return { code: [], prose: issues.map((i) => i.explanation) };
   },
 };

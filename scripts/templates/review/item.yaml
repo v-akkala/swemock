@@ -1,0 +1,35 @@
+# SCAFFOLD: delete this line once the item is finished (content:validate fails while it is here).
+#
+# A tiny pull request "written by an AI agent". Replace the content, keep the structure.
+# Full guide: prompts/authoring/review.md
+title: __TITLE__
+difficulty: __DIFFICULTY__
+tags: [data-structures]
+source: authored
+reviewed: false
+version: 1
+language: python
+minutes: 40
+
+pr:
+  title: Add a helper to compute the average order value
+  description: |
+    Adds `average_order_value()` to `orders.py` and tests for it. Handles empty input and rounds to cents.
+
+decision: request_changes   # approve | request_changes | reject
+
+issues:
+  - id: no-empty-guard
+    file: orders.py
+    lines: [5, 6]
+    category: missed-edge-case
+    severity: high
+    title: Division by zero on an empty list
+    explanation: The description claims empty input is handled, but `sum(...) / len(orders)` raises ZeroDivisionError for an empty list.
+    fix: { file: orders.py, old: "    return round(sum(o.total for o in orders) / len(orders), 2)", new: "    if not orders:\n        return 0.0\n    return round(sum(o.total for o in orders) / len(orders), 2)" }
+
+acceptable: []
+
+questions:
+  - What would you want to see in the tests before approving this?
+  - How do you decide between "request changes" and "approve with nits" for a small PR?

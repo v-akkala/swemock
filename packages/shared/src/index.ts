@@ -9,3 +9,6 @@ export * from "./rounds/coverage";
 export * from "./rounds/resume";
 export * from "./rounds/signals";
 export * from "./rounds/feedback";
+export * from "./fluency/diff";
+export * from "./fluency/mutate";
+export * from "./fluency/match";

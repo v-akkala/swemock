@@ -242,6 +242,182 @@ export function autoLldScores(m: LldMetrics): SourcedScore[] {
   ];
 }
 
+// ---- auto (AI Fluency) --------------------------------------------------------------------------------
+
+/** How the candidate used the assistant, from the event log. */
+export interface AiUse {
+  queries: number;
+  /** Assistant replies whose proposed code was applied, in part or in full. */
+  applies: number;
+  hunksAccepted: number;
+  hunksRejected: number;
+  /** Applies after which the candidate ran a command or the tests before the next apply. */
+  appliesVerified: number;
+  /** The candidate wrote or edited a test of their own. */
+  ownTests: boolean;
+  mutationsInjected: number;
+  mutationsCaught: number;
+}
+
+const atLeast = (x: number, t4: number, t3: number, t2: number): Level => (x >= t4 ? 4 : x >= t3 ? 3 : x >= t2 ? 2 : 1);
+
+/** Quality of AI use: null when the assistant wasn't used (not using it isn't penalized, and isn't scored). */
+export function aiUseScore(ai: AiUse): { score: Level; evidence: string[] } | null {
+  if (ai.queries === 0) return null;
+  let score = 2;
+  const evidence = [`${ai.queries} assistant question(s); ${ai.applies} reply(ies) applied (${ai.hunksAccepted} hunk(s) accepted, ${ai.hunksRejected} rejected)`];
+  if (ai.applies === 0 || ai.appliesVerified / ai.applies >= 0.5) {
+    score++;
+    evidence.push(ai.applies ? `Ran code after ${ai.appliesVerified} of ${ai.applies} applied replies` : "Applied nothing blindly");
+  } else evidence.push(`Ran code after only ${ai.appliesVerified} of ${ai.applies} applied replies`);
+  if (ai.hunksRejected > 0 || ai.ownTests || ai.mutationsCaught > 0) {
+    score++;
+    evidence.push("Pushed back on or independently checked what the assistant produced");
+  }
+  if (ai.applies >= 3 && ai.appliesVerified === 0) score--;
+  if (ai.mutationsInjected > 0) evidence.push(`Caught ${ai.mutationsCaught} of ${ai.mutationsInjected} injected mistake(s)`);
+  if (ai.mutationsInjected > ai.mutationsCaught) score--;
+  return { score: clamp(score), evidence };
+}
+
+export interface FindingMetrics {
+  findings: number;
+  planted: number;
+  recall: number;
+  precision: number;
+  severityCalibration: number;
+  matched: number;
+}
+
+const findingScores = (m: FindingMetrics, ids: { recall: string; precision: string; severity?: string }): SourcedScore[] => {
+  const out: SourcedScore[] = [
+    { dimension: ids.recall, source: "auto", score: atLeast(m.recall, 0.85, 0.6, 0.3), evidence: [`${m.matched} of ${m.planted} planted issues found (severity-weighted recall ${Math.round(m.recall * 100)}%)`] },
+    {
+      dimension: ids.precision,
+      source: "auto",
+      score: m.findings === 0 ? 1 : atLeast(m.precision, 0.85, 0.65, 0.4),
+      evidence: [m.findings === 0 ? "No findings reported" : `${Math.round(m.precision * 100)}% of ${m.findings} finding(s) were real`],
+    },
+  ];
+  if (ids.severity && m.matched > 0) {
+    out.push({ dimension: ids.severity, source: "auto", score: atLeast(m.severityCalibration, 0.8, 0.6, 0.4), evidence: [`Severity matched the planted rating ${Math.round(m.severityCalibration * 100)}%`] });
+  }
+  return out;
+};
+
+export interface ComprehensionMetrics extends FindingMetrics {
+  ai: AiUse;
+}
+
+export function autoComprehensionScores(m: ComprehensionMetrics): SourcedScore[] {
+  const out = findingScores(m, { recall: "bug_recall", precision: "precision", severity: "severity" });
+  const use = aiUseScore(m.ai);
+  if (use) out.push({ dimension: "ai_use", source: "auto", ...use });
+  return out;
+}
+
+export type ReviewDecision = "approve" | "request_changes" | "reject";
+
+export interface ReviewMetrics extends FindingMetrics {
+  /** The right call and the candidate's, if they made one. */
+  correct: ReviewDecision;
+  given: ReviewDecision | null;
+  /** Best "fix" submission: hidden tests passed and total; null if none was made. */
+  fix: { passed: number; total: number } | null;
+}
+
+/** Same call → 4; request changes versus reject → 3; approve versus request changes → 2; approve versus reject → 1. */
+export function decisionScore(correct: ReviewDecision, given: ReviewDecision): Level {
+  if (correct === given) return 4;
+  const pair = new Set([correct, given]);
+  if (pair.has("request_changes") && pair.has("reject")) return 3;
+  if (pair.has("approve") && pair.has("request_changes")) return 2;
+  return 1;
+}
+
+export function autoReviewScores(m: ReviewMetrics): SourcedScore[] {
+  const out = findingScores(m, { recall: "recall", precision: "precision" });
+  if (m.planted === 0) {
+    // A correct PR: there is nothing to find, and only over-flagging hurts.
+    out.splice(0, 1);
+  }
+  out.push(
+    m.given
+      ? { dimension: "decision", source: "auto", score: decisionScore(m.correct, m.given), evidence: [`Decided "${m.given.replace("_", " ")}"; the right call was "${m.correct.replace("_", " ")}"`] }
+      : { dimension: "decision", source: "auto", score: 1, evidence: ["No final decision was made"] },
+  );
+  if (m.fix && m.fix.total > 0) {
+    out.push({ dimension: "fix", source: "auto", score: atLeast(m.fix.passed / m.fix.total, 1, 0.75, 0.4), evidence: [`The fix passes ${m.fix.passed} of ${m.fix.total} hidden tests`] });
+  }
+  return out;
+}
+
+export interface ExtensionMetrics {
+  /** Best submission by acceptance tests passed. */
+  acceptance: { passed: number; total: number } | null;
+  regression: { passed: number; total: number } | null;
+  solved: boolean;
+  submissions: number;
+  minutesToSolve: number | null;
+  minutesTotal: number;
+  ai: AiUse;
+  /** Test runs (any command) in the session. */
+  runs: number;
+}
+
+export function autoExtensionScores(m: ExtensionMetrics): SourcedScore[] {
+  const out: SourcedScore[] = [];
+  const share = (x: { passed: number; total: number } | null) => (x && x.total ? x.passed / x.total : 0);
+  out.push({
+    dimension: "acceptance",
+    source: "auto",
+    score: m.acceptance ? atLeast(share(m.acceptance), 1, 0.75, 0.4) : 1,
+    evidence: [m.acceptance ? `${m.acceptance.passed}/${m.acceptance.total} acceptance tests passed` : "No submission"],
+  });
+  out.push({
+    dimension: "regression",
+    source: "auto",
+    score: m.regression ? atLeast(share(m.regression), 1, 0.9, 0.7) : 1,
+    evidence: [m.regression ? `${m.regression.passed}/${m.regression.total} existing tests still pass` : "No submission"],
+  });
+  // Verification: tests after applying assistant code, diff review, own tests, caught mistakes. With no
+  // assistant use, running tests and adding one is what counts.
+  let v = 1;
+  const evidence: string[] = [];
+  if (m.runs >= 2) {
+    v++;
+    evidence.push(`${m.runs} test run(s)`);
+  }
+  if (m.ai.ownTests) {
+    v++;
+    evidence.push("Wrote or edited a test");
+  }
+  if (m.ai.applies > 0) {
+    if (m.ai.appliesVerified / m.ai.applies >= 0.5) {
+      v++;
+      evidence.push(`Ran code after ${m.ai.appliesVerified} of ${m.ai.applies} applied replies`);
+    }
+    if (m.ai.hunksRejected > 0 || m.ai.mutationsCaught > 0) {
+      v++;
+      evidence.push("Reviewed diffs and pushed back");
+    }
+    if (m.ai.appliesVerified === 0) v--;
+  }
+  if (m.ai.mutationsInjected > m.ai.mutationsCaught) {
+    v--;
+    evidence.push(`Missed ${m.ai.mutationsInjected - m.ai.mutationsCaught} injected mistake(s)`);
+  }
+  out.push({ dimension: "verification", source: "auto", score: clamp(v), evidence: evidence.length ? evidence : ["No verification behavior recorded"] });
+  const ratio = m.minutesToSolve !== null && m.minutesTotal ? m.minutesToSolve / m.minutesTotal : null;
+  out.push({
+    dimension: "time",
+    source: "auto",
+    score: ratio === null ? 1 : ratio <= 0.6 ? 4 : ratio <= 0.8 ? 3 : 2,
+    evidence: [ratio === null ? "Never reached a fully passing submission" : `All tests passing after ${m.minutesToSolve} of ${m.minutesTotal} minutes`],
+  });
+  return out;
+}
+
 // ---- merge and recommend ----------------------------------------------------------------------------
 
 /** Per dimension the most informed source wins: ai over self over auto. Every source is kept for display. */

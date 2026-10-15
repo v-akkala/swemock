@@ -278,3 +278,90 @@ export async function lldSubmit(page: Page): Promise<void> {
 export function lldProvidedFile(slug: string, file: string, lang: "python" | "cpp" = "python"): string {
   return fs.readFileSync(path.join(LLD_ROOT, slug, lang, "starter", file), "utf8");
 }
+
+// ---- AI Fluency (M6) -----------------------------------------------------------------------------------
+
+const FLUENCY_ROOT = path.resolve(import.meta.dirname, "../../../content");
+export type FluencyKind = "comprehension" | "review" | "extension";
+
+export function fluencySlugs(type: FluencyKind): string[] {
+  return fs.readdirSync(path.join(FLUENCY_ROOT, type)).filter((s) => fs.existsSync(path.join(FLUENCY_ROOT, type, s, "item.yaml")));
+}
+
+export interface PlantedInfo {
+  id: string;
+  file: string;
+  lines: [number, number];
+  category: string;
+  severity: string;
+}
+
+/** Planted bugs (comprehension) or seeded issues (review), read from item.yaml. */
+export function plantedOf(type: "comprehension" | "review", slug: string): PlantedInfo[] {
+  const yaml = fs.readFileSync(path.join(FLUENCY_ROOT, type, slug, "item.yaml"), "utf8");
+  return [...yaml.matchAll(/^\s*- id: ([\w-]+)\n\s+file: ([\w./-]+)\n\s+lines: \[(\d+), (\d+)\]\n\s+category: ([\w-]+)\n\s+severity: (\w+)/gm)].map((m) => ({
+    id: m[1]!,
+    file: m[2]!,
+    lines: [Number(m[3]), Number(m[4])],
+    category: m[5]!,
+    severity: m[6]!,
+  }));
+}
+
+/** Strings that must never reach the browser before the debrief: explanations and hidden test names. */
+export function fluencyHidden(type: FluencyKind, slug: string): string[] {
+  const dir = path.join(FLUENCY_ROOT, type, slug);
+  const out: string[] = [];
+  const yaml = fs.readFileSync(path.join(dir, "item.yaml"), "utf8");
+  for (const m of yaml.matchAll(/^\s+explanation: (.+)$/gm)) out.push(m[1]!.replace(/^"|"$/g, "").slice(0, 60));
+  for (const sub of ["bugtests", "tests_hidden"]) {
+    const d = path.join(dir, sub);
+    if (!fs.existsSync(d)) continue;
+    for (const f of fs.readdirSync(d)) for (const m of fs.readFileSync(path.join(d, f), "utf8").matchAll(/def (test_\w+)/g)) out.push(m[1]!);
+  }
+  return out;
+}
+
+/** Every file under an extension item's reference/ overlay: path → text. */
+export function fluencyReference(slug: string): Record<string, string> {
+  const root = path.join(FLUENCY_ROOT, "extension", slug, "reference");
+  const out: Record<string, string> = {};
+  const walk = (rel: string) => {
+    for (const e of fs.readdirSync(path.join(root, rel), { withFileTypes: true })) {
+      const p = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory()) walk(p);
+      else out[p] = fs.readFileSync(path.join(root, p), "utf8");
+    }
+  };
+  walk("");
+  return out;
+}
+
+/** A file of a content item as shipped to the candidate (comprehension code/, review head/, extension repo/). */
+export function fluencyFile(type: FluencyKind, slug: string, file: string): string {
+  const root = path.join(FLUENCY_ROOT, type, slug, type === "comprehension" ? "code" : type === "review" ? "head" : "repo");
+  return fs.readFileSync(path.join(root, file), "utf8");
+}
+
+/** Opens a file in the fluency workspace's tree and replaces its content. */
+export async function setWorkspaceFile(page: Page, file: string, code: string): Promise<void> {
+  await page.getByTestId(`tree-${file}`).click();
+  await page.waitForFunction((f) => (window as unknown as { __swemockEditorLabel?: string }).__swemockEditorLabel?.endsWith(`:${f}`), file);
+  await setCode(page, code);
+}
+
+/** Starts a mock interview from an AI Fluency item page and returns its id. */
+export async function startFluencyInterview(page: Page, type: FluencyKind, slug: string, interviewer: "AI interviewer" | "Scripted interviewer" | "In another chat"): Promise<string> {
+  await page.goto(`/ai-fluency/${type}/${slug}`);
+  await page.getByTestId("open-interview").click();
+  await page.getByRole("dialog", { name: "Start a mock interview" }).getByLabel(interviewer).check();
+  await page.getByTestId("start-interview").click();
+  await page.waitForURL(/\/interview\/[A-Z0-9]+$/);
+  return page.url().split("/").pop()!;
+}
+
+/** Turns fallible mode on or off through the settings API. */
+export async function setFallible(page: Page, on: boolean): Promise<void> {
+  const res = await page.request.patch("/api/settings", { data: { features: { voiceInput: false, fallibleMode: on } } });
+  expect(res.ok(), await res.text()).toBe(true);
+}

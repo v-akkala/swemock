@@ -69,3 +69,14 @@ body {
 .prose-lite pre code { background: none; padding: 0; }
 .prose-lite strong { font-weight: 600; }
 .prose-lite .katex-display { overflow-x: auto; overflow-y: hidden; }
+
+/* Gutter annotations in the code editor (AI Fluency). */
+.swemock-mark {
+  background: rgba(245, 158, 11, 0.16);
+}
+.swemock-mark-glyph {
+  background: #f59e0b;
+  width: 6px !important;
+  margin-left: 4px;
+  border-radius: 2px;
+}

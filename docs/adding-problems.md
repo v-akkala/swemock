@@ -99,3 +99,33 @@ Full guide, also usable as a brief for an AI drafting tool: `prompts/authoring/l
 In the app a problem appears at `/lld`. In practice the candidate runs the visible tests any time and
 submits to run the hidden ones (results show only counts per category and "Hidden test #k"); a "requirement
 change" button brings in the extension tests. In an interview the change arrives by itself at 60% of the time.
+
+# Adding AI Fluency items (comprehension, review, extension)
+
+Three item types live under `content/comprehension/`, `content/review/`, and `content/extension/`, each a
+folder with an `item.yaml`. They need Docker and the sandbox images (the validator proves every claim by
+running code), and Python is enough.
+
+```bash
+pnpm content:new comprehension my-codebase --title "My Codebase" --difficulty medium
+pnpm content:new review my-pr --title "My PR" --difficulty medium
+pnpm content:new extension my-repo --title "My Repo" --difficulty hard
+pnpm content:validate comprehension/my-codebase     # likewise review/..., extension/..., or --type comprehension
+```
+
+What is checked:
+
+- **comprehension**: 4–8 bugs, each with an exact-replacement `fix` that starts inside its planted `lines`, a
+  `test_bug_<id>` in `bugtests/` that fails on the buggy code and passes with that one fix, shipping tests that
+  pass on the buggy code, and every test passing with all fixes applied. Codebase at most 5 files.
+- **review**: at most 4 changed files; issues point into changed files; an `approve` PR passes the hidden tests
+  as submitted and has only low-severity nits; any other decision must fail them as submitted and pass once
+  every issue's fix is applied.
+- **extension**: the existing suite passes; acceptance tests (`test_acceptance_*`) fail on the untouched repo;
+  regression tests pass on it; the `reference/` overlay passes everything; `CONVENTIONS.md` exists.
+
+Full briefs, also usable for an AI drafting tool: `prompts/authoring/comprehension.md`, `review.md`, and
+`extension.md`. Size warnings (a codebase under 200 lines, a repo under 500) are advisory.
+
+Bug explanations, `bugtests/`, hidden tests, and the reference are **private**: the browser sees the code, the
+brief or ticket, the shipping tests, and (for a review) the diff. They appear only in the debrief.

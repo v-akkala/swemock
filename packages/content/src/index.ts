@@ -4,6 +4,20 @@ import path from "node:path";
 import { ContentError, loadDsaItem, toPrivate, toPublic, type LoadedDsa } from "./dsa/load";
 import { loadLldItem, lldPrivate, lldPublic, type LoadedLld } from "./lld/load";
 import {
+  comprehensionPrivate,
+  comprehensionPublic,
+  extensionPrivate,
+  extensionPublic,
+  loadComprehensionItem,
+  loadExtensionItem,
+  loadReviewItem,
+  reviewPrivate,
+  reviewPublic,
+  type LoadedComprehension,
+  type LoadedExtension,
+  type LoadedReview,
+} from "./fluency/load";
+import {
   behavioralPrivate,
   behavioralPublic,
   csPrivate,
@@ -20,11 +34,13 @@ export * from "./question/manifest";
 export * from "./question/load";
 export * from "./lld/manifest";
 export * from "./lld/load";
+export * from "./fluency/manifest";
+export * from "./fluency/load";
 
-export type ContentItem = LoadedDsa | LoadedCs | LoadedBehavioral | LoadedLld;
+export type ContentItem = LoadedDsa | LoadedCs | LoadedBehavioral | LoadedLld | LoadedComprehension | LoadedReview | LoadedExtension;
 
 /** One folder per item under content/<type>/. Adding a type: a loader, a public/private split, and a line here. */
-export const CONTENT_TYPES = ["dsa", "cs", "behavioral", "lld"] as const;
+export const CONTENT_TYPES = ["dsa", "cs", "behavioral", "lld", "comprehension", "review", "extension"] as const;
 export type ContentType = (typeof CONTENT_TYPES)[number];
 
 const LOADERS: Record<ContentType, (dir: string) => ContentItem> = {
@@ -32,6 +48,9 @@ const LOADERS: Record<ContentType, (dir: string) => ContentItem> = {
   cs: loadCsItem,
   behavioral: loadBehavioralItem,
   lld: loadLldItem,
+  comprehension: loadComprehensionItem,
+  review: loadReviewItem,
+  extension: loadExtensionItem,
 };
 
 /** Every file under `dir` (relative paths, sorted), skipping dotfiles and editor junk. */
@@ -146,6 +165,12 @@ export function toStored(item: ContentItem): StoredItem {
       return { ...base, difficulty: item.manifest.difficulty, tags: item.manifest.topics, publicJson: JSON.stringify(csPublic(item)), privateJson: JSON.stringify(csPrivate(item)) };
     case "lld":
       return { ...base, difficulty: item.manifest.difficulty, tags: item.manifest.tags, publicJson: JSON.stringify(lldPublic(item)), privateJson: JSON.stringify(lldPrivate(item)) };
+    case "comprehension":
+      return { ...base, difficulty: item.manifest.difficulty, tags: item.manifest.tags, publicJson: JSON.stringify(comprehensionPublic(item)), privateJson: JSON.stringify(comprehensionPrivate(item)) };
+    case "review":
+      return { ...base, difficulty: item.manifest.difficulty, tags: item.manifest.tags, publicJson: JSON.stringify(reviewPublic(item)), privateJson: JSON.stringify(reviewPrivate(item)) };
+    case "extension":
+      return { ...base, difficulty: item.manifest.difficulty, tags: item.manifest.tags, publicJson: JSON.stringify(extensionPublic(item)), privateJson: JSON.stringify(extensionPrivate(item)) };
     case "behavioral":
       return { ...base, difficulty: null, tags: item.manifest.competencies, publicJson: JSON.stringify(behavioralPublic(item)), privateJson: JSON.stringify(behavioralPrivate(item)) };
   }

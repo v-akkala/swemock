@@ -145,3 +145,20 @@ the editorial and reference code. The same private/public split is what the spec
   debrief (or until a practice session reveals them deliberately: the hint ladder and the "requirement change"
   button). The AI interviewer sees them, so its replies pass the same leak filter as in DSA.
 - The class diagram is drawn in the browser by Mermaid with `securityLevel: "strict"`.
+
+## AI Fluency workspaces and the assistant
+
+- Runs use the same sandbox as everything else: only the files of the item plus new files under safe names
+  and paths reach the container (names are checked, `..` and `tests/hidden` are refused, sizes are capped),
+  with no network and the usual limits. Commands come from the item's manifest, never from the browser.
+- Planted-bug explanations, the `bugtests/`, hidden tests, and reference implementations are private to the
+  server until the debrief. A review's issues and an extension's hidden tests are read only by the grading
+  and debrief code. The e2e specs scan every response body for them.
+- The assistant sees only what the candidate attaches (a file or a selection, capped in size). Its prompts
+  and replies are stored locally with the session. With a hosted provider they are sent to that provider like
+  any other model call; with provider `none` nothing leaves the machine (a packet is copied by the user).
+- **Fallible mode** modifies the assistant's proposed code in the server before it is returned. The
+  modified text is parsed in the sandbox first, and the mutation record never reaches the browser during the
+  round. Applying a proposal only changes the candidate's own editor buffer.
+- Code from a reply goes through a per-hunk diff preview; nothing is written to the workspace without the
+  candidate pressing apply.

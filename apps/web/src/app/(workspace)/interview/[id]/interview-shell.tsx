@@ -4,6 +4,7 @@ import { ProblemWorkspace, type WorkspaceProps } from "@/components/dsa/workspac
 import { ChatPanel } from "@/components/interview/chat-panel";
 import { InterviewBar } from "@/components/interview/parts";
 import { useInterview } from "@/components/interview/use-interview";
+import { FluencyWorkspace, type FluencyWorkspaceProps } from "@/components/fluency/workspace";
 import { LldWorkspace, type LldWorkspaceProps } from "@/components/lld/workspace";
 import { SplitPane } from "@/components/split-pane";
 
@@ -42,6 +43,26 @@ export function LldInterviewShell({ sessionId, workspace, liveVia: initialLiveVi
           initial={74}
           min={50}
           max={85}
+          className="h-full"
+        />
+      </div>
+    </div>
+  );
+}
+
+/** A timed AI Fluency interview: the workspace with its assistant on the left, the interviewer chat on the right. */
+export function FluencyInterviewShell({ sessionId, workspace, liveVia: initialLiveVia }: { sessionId: string; workspace: FluencyWorkspaceProps; liveVia: "app" | "packet" }) {
+  const iv = useInterview(sessionId, initialLiveVia);
+  return (
+    <div className="flex h-full flex-col">
+      <InterviewBar iv={iv} />
+      <div className="min-h-0 flex-1">
+        <SplitPane
+          first={<FluencyWorkspace {...workspace} />}
+          second={<ChatPanel iv={iv} sessionId={sessionId} packetKind="fluency-live" packetDescription={DSA_PACKET} />}
+          initial={76}
+          min={55}
+          max={88}
           className="h-full"
         />
       </div>
