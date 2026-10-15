@@ -1,0 +1,95 @@
+title: HTTP Response Cache
+difficulty: hard
+tags: [caching, http]
+source: authored
+reviewed: false
+version: 1
+language: python
+minutes: 60
+
+brief: |
+  A small private HTTP cache and a client that uses it. `CachingClient.request` serves repeat GETs from memory
+  while the response is fresh, revalidates stale entries with `If-None-Match`, and treats writes as a reason to
+  forget what it knows about a URL. `Cache` holds the entries; `keys.py` decides which requests count as the
+  same; `headers.py` parses the headers that matter. You did not write it. Read it, find what is wrong with it,
+  and be ready to discuss how you would improve it.
+
+bugs:
+  - id: no-store-ignored
+    file: headers.py
+    lines: [10, 10]
+    category: logic-error
+    severity: high
+    title: "`no-store` is not recognized when it follows a comma and a space"
+    explanation: The directive name is not stripped, so " no-store" never equals "no-store", and responses that must not be stored are cached.
+    fix: { file: headers.py, old: "name, _, val = part.partition(\"=\")", new: "name, _, val = part.strip().partition(\"=\")" }
+  - id: capacity-plus-one
+    file: cache.py
+    lines: [53, 56]
+    category: off-by-one
+    severity: low
+    title: The cache holds max_entries + 1 entries
+    explanation: Eviction runs only when the store is already larger than the limit, before the new entry is added, so the store settles one entry above max_entries.
+    fix: { file: cache.py, old: "if len(self._store) > self.max_entries:", new: "if len(self._store) >= self.max_entries:" }
+  - id: shared-headers
+    file: models.py
+    lines: [13, 16]
+    category: mutable-default
+    severity: medium
+    title: All responses built without headers share one dict
+    explanation: "The default `headers={}` is evaluated once and, when it is empty, `lower_keys` is skipped, so every response built without headers aliases the same dict; the first caller that sets a header (`age`, `warning`) leaks it into all of them."
+    fix: { file: models.py, old: "def __init__(self, status, body=\"\", headers={}):\n        self.status = status\n        self.body = body\n        self.headers = lower_keys(headers) if headers else headers", new: "def __init__(self, status, body=\"\", headers=None):\n        self.status = status\n        self.body = body\n        self.headers = lower_keys(headers or {})" }
+  - id: write-keeps-cache
+    file: cache.py
+    lines: [78, 80]
+    category: stale-cache
+    severity: high
+    title: A POST does not invalidate the cached GET
+    explanation: invalidate() removes only the key built from the write request, which starts with "POST", so the cached GET entries for that URL stay and are served after the resource changed.
+    fix: { file: cache.py, old: "        self._store.pop(cache_key(request), None)", new: "        marker = url_marker(request.url)\n        for key in [k for k in self._store if marker in k]:\n            del self._store[key]" }
+  - id: error-hides-staleness
+    file: client.py
+    lines: [28, 31]
+    category: swallowed-error
+    severity: medium
+    title: Origin failures are swallowed and stale data is returned as if it were current
+    explanation: "`except Exception` catches every error, including programming mistakes, and returns the stale response with no `Warning` header and no trace, so callers and operators cannot tell the data is out of date."
+    fix: { file: client.py, old: "            if found:\n                return found.response\n            raise", new: "            if found:\n                stale = found.response.copy()\n                stale.headers[\"warning\"] = \"110 - Response is stale\"\n                return stale\n            raise" }
+  - id: wall-clock
+    file: cache.py
+    lines: [45, 47]
+    category: time-handling
+    severity: medium
+    title: Entries are stamped with the wall clock but aged with the injected clock
+    explanation: "`put` records `time.time()` while `lookup` computes the age from `self._now()`; with any injected or monotonic clock the age is garbage, so freshness is wrong (and untestable)."
+    fix: { file: cache.py, old: "            time.time(),\n            parse_int", new: "            self._now(),\n            parse_int" }
+
+decisions:
+  - id: private-cache
+    title: Entries are keyed by method, URL, and the Vary headers
+    for: Matches how HTTP defines "the same request", and keeps different representations of one URL apart.
+    against: The per-URL Vary table is separate state that must stay in sync with the entries; it is easy to leak or get stale.
+  - id: copy-on-store
+    title: Responses are copied when stored and when served
+    for: Callers cannot corrupt the cache by mutating what they received.
+    against: Copying every body on every hit costs time and memory for large responses.
+  - id: oldest-first
+    title: Eviction removes the oldest entry, not the least recently used
+    for: Very simple, and the dict preserves insertion order for free.
+    against: A hot entry that was stored early is evicted before cold ones; LRU is what most caches want.
+
+improvements:
+  - Evict by least recent use, and count hits and misses for observability.
+  - Honour `s-maxage`, `no-cache`, `must-revalidate`, and the `Age` header from the origin.
+  - Make the stale-if-error behavior explicit and bounded (a maximum staleness).
+  - Store bodies once and copy only headers, or make responses immutable.
+
+acceptable:
+  - { file: client.py, lines: [14, 16], category: missing-validation, note: "HEAD requests are served from the cache entries stored for GET, which is allowed by HTTP." }
+  - { file: cache.py, lines: [1, 3], category: style, note: "Docstrings are short; not a defect." }
+
+questions:
+  - Walk me through what happens on a repeat GET for a URL whose entry has just become stale.
+  - Why might the author have copied the response in `put` and again in `_hit`?
+  - What happens to this cache when two threads call `request` at once, and what would you change?
+  - What would you want to see in the tests before trusting the revalidation path?

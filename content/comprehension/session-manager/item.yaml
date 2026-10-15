@@ -1,0 +1,104 @@
+title: Session Manager
+difficulty: hard
+tags: [auth, security, concurrency]
+source: authored
+reviewed: false
+version: 1
+language: python
+minutes: 60
+
+brief: |
+  The session layer of a small web service. `SessionManager.login` checks a password, rate-limits failures, and
+  issues a token; only a keyed digest of the token is stored. `validate` looks a token up, enforces absolute and
+  idle expiry, and slides the idle timer. Users may hold a limited number of concurrent sessions. You did not
+  write it. Read it as a security reviewer: find what is wrong, rank it, and be ready to discuss how you would
+  harden it.
+
+bugs:
+  - id: predictable-tokens
+    file: tokens.py
+    lines: [5, 12]
+    category: security
+    severity: high
+    title: Session tokens come from a non-cryptographic random generator
+    explanation: "`random` is a Mersenne Twister; its output can be predicted from earlier outputs, so tokens must come from `secrets`."
+    fix: { file: tokens.py, old: "from random import choice", new: "from secrets import choice" }
+  - id: password-logged
+    file: manager.py
+    lines: [29, 29]
+    category: security
+    severity: high
+    title: The attempted password is written to the log
+    explanation: Failed logins are often typos of the real password; logging them leaks credentials to anyone who can read the logs.
+    fix: { file: manager.py, old: "f\"login failed for {user_id} with password {password}\"", new: "f\"login failed for {user_id}\"" }
+  - id: lockout-off-by-one
+    file: limits.py
+    lines: [22, 23]
+    category: off-by-one
+    severity: medium
+    title: Lockout starts one failure late
+    explanation: The check uses `>` so a user is locked only after max_failures + 1 failures, one more guess than the policy allows.
+    fix: { file: limits.py, old: "if len(recent) > self.max_failures:", new: "if len(recent) >= self.max_failures:" }
+  - id: idle-session-kept
+    file: manager.py
+    lines: [48, 49]
+    category: resource-leak
+    severity: medium
+    title: Idle sessions are rejected but never removed
+    explanation: Expired sessions are deleted, idle ones are only refused, so they accumulate forever (and the ttl check later removes them only if someone presents the token again).
+    fix: { file: manager.py, old: "        if current - session.last_seen > self.idle_timeout:\n            return None", new: "        if current - session.last_seen > self.idle_timeout:\n            self.store.remove(session.digest)\n            return None" }
+  - id: session-cap-plus-one
+    file: manager.py
+    lines: [66, 66]
+    category: off-by-one
+    severity: low
+    title: A user can hold max_per_user + 1 sessions
+    explanation: The limit is enforced before the new session is added and trims down to max_per_user, so the new one makes it max_per_user + 1.
+    fix: { file: manager.py, old: "while len(sessions) > self.max_per_user:", new: "while len(sessions) >= self.max_per_user:" }
+  - id: constant-time-compare
+    file: tokens.py
+    lines: [22, 22]
+    category: security
+    severity: medium
+    title: Digests are compared with ==
+    explanation: Ordinary string comparison returns at the first differing character, which leaks how much of a secret value matched; use `hmac.compare_digest`.
+    fix: { file: tokens.py, old: "    return a == b", new: "    return hmac.compare_digest(a, b)" }
+  - id: index-leak
+    file: store.py
+    lines: [29, 31]
+    category: resource-leak
+    severity: low
+    title: The per-user index keeps digests of removed sessions
+    explanation: "`remove` deletes the row but not the entry in `_by_user`, so the index grows with every login and `for_user` has to filter dead entries."
+    fix: { file: store.py, old: "        session = self._rows.pop(digest, None)\n        return session is not None", new: "        session = self._rows.pop(digest, None)\n        if session is not None:\n            self._by_user[session.user_id].remove(digest)\n        return session is not None" }
+
+decisions:
+  - id: store-digest
+    title: Only an HMAC of the token is stored
+    for: A leaked database does not hand out working sessions.
+    against: The secret becomes a single point of failure; rotating it logs everyone out.
+  - id: sliding-idle
+    title: Every validation slides the idle timer
+    for: Active users are never logged out mid-task.
+    against: A write on every request (here a field update) is costly in a real database and complicates caching.
+  - id: injected-clock
+    title: Time is injected as a callable
+    for: Tests control time deterministically.
+    against: Callers must remember to pass the right clock; a mixed-up clock fails silently.
+
+improvements:
+  - Make the manager thread-safe, or move the check-and-update into one atomic database operation.
+  - Rotate the token on privilege change and on login to prevent session fixation.
+  - Add audit events (login, failure, logout, lockout) as structured data, with tokens masked.
+  - Persist the limiter state so a restart does not reset lockouts.
+  - Hash with a slow, salted function if tokens could ever be user-chosen.
+
+acceptable:
+  - { file: manager.py, lines: [10, 12], category: style, note: "The default check_password rejects everything; that is a safe default for a library." }
+  - { file: tokens.py, lines: [25, 27], category: style, note: "mask() reveals four characters, which is acceptable for log correlation." }
+
+questions:
+  - Walk me through what happens between a request arriving with a token and its user id being returned.
+  - What would an attacker learn from the log, and from the response timing?
+  - Two requests for the same token arrive at once. What can go wrong?
+  - How would you test the lockout and expiry rules without sleeping?

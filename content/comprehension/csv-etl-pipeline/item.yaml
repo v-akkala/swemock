@@ -1,0 +1,94 @@
+title: CSV Sales Pipeline
+difficulty: medium
+tags: [etl, parsing]
+source: authored
+reviewed: false
+version: 1
+language: python
+minutes: 60
+
+brief: |
+  A small pipeline that reads a CSV export of sales orders, removes duplicate orders, converts amounts to cents,
+  and produces totals per region and a list of distinct customers. `pipeline.run(text)` is the entry point; the
+  other modules are its parts. You did not write it and you don't know its history. Read it, find what is wrong
+  with it, and be ready to discuss how you would improve it.
+
+bugs:
+  - id: last-row-lost
+    file: reader.py
+    lines: [44, 44]
+    category: boundary
+    severity: high
+    title: The last row is dropped when the file has no trailing newline
+    explanation: "`text.split(\"\\n\")[:-1]` assumes the text ends with a newline. Without one, the final data row is cut off silently."
+    fix: { file: reader.py, old: "lines = text.split(\"\\n\")[:-1]", new: "lines = text.splitlines()" }
+  - id: wrong-line-number
+    file: reader.py
+    lines: [49, 49]
+    category: off-by-one
+    severity: low
+    title: Error messages report the wrong line number
+    explanation: "`enumerate(lines[1:], start=1)` numbers the first data row as line 1, but it is line 2 of the file (the header is line 1), so every message is one line too early."
+    fix: { file: reader.py, old: "enumerate(lines[1:], start=1)", new: "enumerate(lines[1:], start=2)" }
+  - id: float-cents
+    file: transform.py
+    lines: [8, 12]
+    category: float-precision
+    severity: high
+    title: Money converted with float truncation
+    explanation: "`int(float(cleaned) * 100)` truncates: 19.99 * 100 is 1998.9999999999998, so the result is 1998 cents."
+    fix: { file: transform.py, old: "return int(float(cleaned) * 100)", new: "return int(round(float(cleaned) * 100))" }
+  - id: shared-seen
+    file: transform.py
+    lines: [12, 21]
+    category: mutable-default
+    severity: medium
+    title: dedupe() remembers order ids across calls
+    explanation: The default `seen=set()` is created once, so a second pipeline run in the same process drops every order it has ever seen before.
+    fix: { file: transform.py, old: "def dedupe(rows, seen=set()):\n    \"\"\"Drop rows whose 'order_id' was already seen.\"\"\"\n", new: "def dedupe(rows, seen=None):\n    \"\"\"Drop rows whose 'order_id' was already seen.\"\"\"\n    seen = set() if seen is None else seen\n" }
+  - id: quadratic-customers
+    file: transform.py
+    lines: [26, 30]
+    category: performance
+    severity: medium
+    title: unique_customers() is quadratic
+    explanation: "`name not in names` scans a list, so the cost grows with the square of the number of customers."
+    fix: { file: transform.py, old: "    names = []\n    for row in rows:\n        if row[\"customer\"] not in names:\n            names.append(row[\"customer\"])\n    return names", new: "    return list(dict.fromkeys(row[\"customer\"] for row in rows))" }
+  - id: silent-skip
+    file: pipeline.py
+    lines: [14, 18]
+    category: swallowed-error
+    severity: medium
+    title: Rows with a bad amount vanish without a trace
+    explanation: "The `except ValueError: continue` drops the row and records nothing, so `skipped` is always empty and data loss goes unnoticed."
+    fix: { file: pipeline.py, old: "        except ValueError:\n            continue", new: "        except ValueError:\n            skipped.append(row[\"order_id\"])\n            continue" }
+
+decisions:
+  - id: handwritten-parser
+    title: A hand-written CSV parser instead of the csv module
+    for: No dependency surprises, and it is easy to see exactly what quoting rules apply.
+    against: The standard library already handles quoting, embedded newlines, and dialects; a hand-written parser will meet edge cases (such as quoted newlines) that this one does not.
+  - id: float-money
+    title: Amounts parsed as floats and stored as integer cents
+    for: Integer cents avoid accumulating rounding error in sums, which is the right representation.
+    against: Going through float on the way in loses precision; Decimal would parse exactly.
+  - id: dict-report
+    title: The report is a plain dict
+    for: Trivial to serialize and to inspect in tests.
+    against: No schema, so a typo in a key fails late and silently.
+
+improvements:
+  - Replace the hand-written parser with the csv module and keep the quoting tests.
+  - Parse money with Decimal, and make `to_cents` reject negative or malformed input explicitly.
+  - Return a typed report object and record every skipped row with the reason.
+  - Make the pipeline streaming so it doesn't hold the whole file in memory.
+
+acceptable:
+  - { file: pipeline.py, lines: [1, 5], category: style, note: "`os` is imported but never used." }
+  - { file: schema.py, lines: [19, 25], category: style, note: check_header returns the unknown columns as a side channel; unusual but harmless. }
+
+questions:
+  - Walk me through what happens to a row from the CSV text to the totals.
+  - Why might the author have stored amounts as cents, and is the conversion at the edge doing its job?
+  - What breaks if this runs on a 10 GB file, or twice in the same process?
+  - How would you test the parser against the csv module to build confidence in it?

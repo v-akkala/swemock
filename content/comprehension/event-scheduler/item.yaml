@@ -1,0 +1,80 @@
+title: Event Scheduler
+difficulty: medium
+tags: [scheduling, parsing]
+source: authored
+reviewed: false
+version: 1
+language: python
+minutes: 60
+
+brief: |
+  A small in-process job scheduler. Schedules are written as `every 5m`, `daily 09:30` or `weekly fri 08:00`
+  and parsed by `cronspec.py`; `next_run.py` computes when each fires next; `Scheduler.tick()` runs whatever is
+  due, with optional retries on failure. Time is passed in as a clock function and all calendar math is UTC.
+  You did not write it. Read it, find what is wrong, and be ready to discuss how you would make it production
+  ready.
+
+bugs:
+  - id: hour-range
+    file: cronspec.py
+    lines: [40, 43]
+    category: off-by-one
+    severity: low
+    title: "`daily 24:00` is accepted"
+    explanation: The hour check is `> 24`, so 24 passes validation; later `replace(hour=24)` raises ValueError deep inside the scheduler instead of a clear SpecError at parse time.
+    fix: { file: cronspec.py, old: "if value > 24:", new: "if value > 23:" }
+  - id: weekly-same-day
+    file: next_run.py
+    lines: [15, 16]
+    category: logic-error
+    severity: medium
+    title: A weekly job whose day is today and whose time is still ahead waits a whole week
+    explanation: "`next_weekday` is strictly after today, so the weekly branch never considers today's occurrence."
+    fix: { file: next_run.py, old: "        day = next_weekday(after, spec.weekday)\n        return at_time(day, spec.hour, spec.minute)", new: "        today = at_time(after, spec.hour, spec.minute)\n        if (after // 86400 + 3) % 7 == spec.weekday and today > after:\n            return today\n        day = next_weekday(after, spec.weekday)\n        return at_time(day, spec.hour, spec.minute)" }
+  - id: catch-up-storm
+    file: scheduler.py
+    lines: [66, 66]
+    category: logic-error
+    severity: high
+    title: After downtime a job runs once for every missed interval
+    explanation: The next run is computed from the previous scheduled time, not from now, so a process that slept for an hour replays 60 per-minute runs back to back.
+    fix: { file: scheduler.py, old: "job.next_run = next_after(job.spec, job.next_run)", new: "job.next_run = next_after(job.spec, max(job.next_run, self.now()))" }
+  - id: retry-off-by-one
+    file: scheduler.py
+    lines: [58, 58]
+    category: off-by-one
+    severity: medium
+    title: A job with max_retries=N is retried only N-1 times
+    explanation: "`attempts` already counts the first run, so `attempts < max_retries` stops one retry early; the check should be `<=`."
+    fix: { file: scheduler.py, old: "if job.attempts < job.max_retries:", new: "if job.attempts <= job.max_retries:" }
+
+decisions:
+  - id: explicit-clock
+    title: The scheduler never reads the system clock; callers call tick()
+    for: Fully deterministic tests and no background thread to manage.
+    against: Something else must call tick() on time; the scheduler cannot sleep until the next job.
+  - id: lazy-heap
+    title: Stale heap entries are skipped when popped instead of being removed
+    for: Pause, resume, and removal are O(1) to request.
+    against: The heap can grow with dead entries and correctness depends on the `due != next_run` check.
+  - id: utc-only
+    title: All calendar math is in UTC
+    for: No daylight-saving surprises in the implementation.
+    against: Users think of "daily 09:30" in their own timezone.
+
+improvements:
+  - Reject duplicate job ids instead of silently overwriting.
+  - Cap or rotate `history`; it grows without bound.
+  - Add jitter and a maximum backoff for retries instead of a fixed delay.
+  - Run jobs outside the scheduling loop so a slow job does not delay the others.
+  - Persist job state so a restart does not lose next-run times.
+
+acceptable:
+  - { file: scheduler.py, lines: [55, 57], category: swallowed-error, note: "Catching Exception around a job is intentional: one failing job must not stop the others; the error is recorded." }
+  - { file: timeutil.py, lines: [1, 5], category: style, note: "Epoch seconds as ints are a fine interchange format here." }
+
+questions:
+  - Walk me through what tick() does when a job has been paused and resumed.
+  - What happens to a job that takes longer than its interval?
+  - How would you add a timezone to "daily 09:30"?
+  - What breaks if two threads call tick() at the same time?
