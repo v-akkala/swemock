@@ -1,0 +1,14 @@
+title: Booking service — waitlist
+difficulty: hard
+tags: [booking, concurrency]
+source: authored
+reviewed: false
+version: 1
+language: python
+minutes: 60
+
+questions:
+  - How did you make sure waitlist confirmations obey the same rules as normal bookings?
+  - What happens when a cancellation frees a slot that two waiting users both want?
+  - Where did the "reschedule frees a slot" requirement land in your design?
+  - What would you change if cancellations could happen from several threads at once?

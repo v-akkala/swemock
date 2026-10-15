@@ -1,0 +1,14 @@
+title: Expense CLI — recurring and alerts
+difficulty: hard
+tags: [cli, parsing]
+source: authored
+reviewed: false
+version: 1
+language: python
+minutes: 60
+
+questions:
+  - Why did you decide not to store the occurrences?
+  - How did you handle a monthly rule that starts on the 31st?
+  - What did you have to change in the storage layer, and how did you keep old files working?
+  - How would you test the alert thresholds?

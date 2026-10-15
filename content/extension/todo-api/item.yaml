@@ -1,0 +1,14 @@
+title: Todo API — tags and filtering
+difficulty: medium
+tags: [http, refactoring]
+source: authored
+reviewed: false
+version: 1
+language: python
+minutes: 45
+
+questions:
+  - Walk me through which files you changed and why each one.
+  - Which convention was the hardest to follow here, and did you have to bend any?
+  - What did you ask the assistant for, and what did you check before accepting it?
+  - What would break if two tags differed only in case, and how did you rule that out?

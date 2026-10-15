@@ -1,0 +1,14 @@
+title: Job queue — backoff and dead letters
+difficulty: medium
+tags: [scheduling, concurrency]
+source: authored
+reviewed: false
+version: 1
+language: python
+minutes: 50
+
+questions:
+  - Why did you put the backoff calculation where you did?
+  - How did you make jitter testable?
+  - Which existing tests had to change, and how did you decide the new behavior was right?
+  - What would you do about jobs that are claimed but whose worker crashes?
